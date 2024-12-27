@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -71,7 +72,7 @@ func (h *Handlers) GetProfile(c *gin.Context) {
 	if err != nil {
 		c.Error(gin.Error{
 			Type: gin.ErrorTypePublic,
-			Err:  errors.New("user not found"),
+			Err:  errors.New("user not found:" + strconv.Itoa(int(userID))),
 			Meta: http.StatusNotFound,
 		})
 		return

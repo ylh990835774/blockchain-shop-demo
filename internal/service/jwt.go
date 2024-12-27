@@ -1,10 +1,9 @@
 package service
 
 import (
-	"strconv"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"blockchain-shop/pkg/jwt"
 )
 
 type JWTService struct {
@@ -20,14 +19,5 @@ func NewJWTService(secretKey string, issuer string) *JWTService {
 }
 
 func (s *JWTService) GenerateToken(userID int64) (string, error) {
-	now := time.Now()
-	claims := jwt.StandardClaims{
-		ExpiresAt: now.Add(24 * time.Hour).Unix(),
-		IssuedAt:  now.Unix(),
-		Issuer:    s.issuer,
-		Subject:   strconv.FormatInt(userID, 10),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.secretKey))
+	return jwt.GenerateToken(userID, s.secretKey, s.issuer, 24*time.Hour)
 }

@@ -25,3 +25,9 @@ type CreateOrderRequest struct {
 	ProductID int64 `json:"product_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required,gt=0"`
 }
+
+// 用户信息更新请求结构体
+type UpdateProfileRequest struct {
+	Phone   string `json:"phone" binding:"required,len=11"`
+	Address string `json:"address" binding:"required"`
+}

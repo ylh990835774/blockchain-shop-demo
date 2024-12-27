@@ -24,14 +24,6 @@ Content-Type: {{contentTypeJSON}}
   "password": "123456"
 }
 
-### 获取商品列表
-# @name product_list
-GET {{host}}/api/v1/products?page=1&page_size=10
-
-### 获取单个商品详情
-# @name product_detail
-GET {{host}}/api/v1/products/1
-
 ### 获取用户个人信息
 # @name user_profile
 GET {{host}}/api/v1/users/profile
@@ -47,6 +39,14 @@ Content-Type: {{contentTypeJSON}}
   "phone": "13800138001",
   "address": "New Address"
 }
+
+### 获取商品列表
+# @name product_list
+GET {{host}}/api/v1/products?page=1&page_size=10
+
+### 获取单个商品详情
+# @name product_detail
+GET {{host}}/api/v1/products/1
 
 ### 添加新商品
 # @name product_create

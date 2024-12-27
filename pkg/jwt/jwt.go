@@ -3,43 +3,41 @@ package jwt
 import (
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 )
 
+// Claims 包含自定义的用户ID和标准JWT声明
 type Claims struct {
 	UserID int64 `json:"user_id"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
-func ParseToken(token string, secretKey string) (*Claims, error) {
-	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+// ParseToken 解析并验证JWT令牌
+func ParseToken(tokenString, secretKey string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		return claims, nil
 	}
 
-	return nil, jwt.NewValidationError("invalid token", jwt.ValidationErrorMalformed)
+	return nil, jwt.ErrTokenInvalidClaims
 }
 
-func GenerateToken(userID int64, secretKey string, issuer string, expireDuration time.Duration) (string, error) {
-	nowTime := time.Now()
-	expireTime := nowTime.Add(expireDuration)
-
+// GenerateToken 生成新的JWT令牌
+func GenerateToken(userID int64, secretKey, issuer string, expireDuration time.Duration) (string, error) {
 	claims := Claims{
 		UserID: userID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expireTime.Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expireDuration)),
 			Issuer:    issuer,
 		},
 	}
 
-	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token, err := tokenClaims.SignedString([]byte(secretKey))
-
-	return token, err
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secretKey))
 }

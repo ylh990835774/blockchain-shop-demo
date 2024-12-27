@@ -26,6 +26,20 @@ func RegisterAuthRoutes(r *gin.Engine, h *handlers.Handlers, authMiddleware *mid
 	v1 := r.Group("/api/v1")
 	v1.Use(authMiddleware.MiddlewareFunc())
 	{
+		// 用户相关路由
+		userGroup := v1.Group("/users")
+		{
+			userGroup.GET("/profile", h.GetProfile)
+			userGroup.PUT("/profile", h.UpdateProfile)
+		}
+
+		// 商品相关路由
+		productGroup := v1.Group("/products")
+		{
+			productGroup.POST("", h.CreateProduct)
+			productGroup.PUT("/:id", h.UpdateProduct)
+		}
+
 		// 订单相关路由
 		orderGroup := v1.Group("/orders")
 		{

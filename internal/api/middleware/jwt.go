@@ -45,7 +45,7 @@ func (m *JWTMiddleware) MiddlewareFunc() gin.HandlerFunc {
 
 		token := parts[1]
 		claims, err := jwt.ParseToken(token, m.secretKey)
-		if err != nil {
+		if err != nil || claims == nil || claims.UserID == 0 {
 			c.Error(gin.Error{
 				Type: gin.ErrorTypePublic,
 				Err:  errors.ErrUnauthorized,
