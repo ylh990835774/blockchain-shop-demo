@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"blockchain-shop/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 
 	"github.com/gin-gonic/gin"
 )

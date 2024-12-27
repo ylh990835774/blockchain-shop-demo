@@ -1,9 +1,9 @@
 package service
 
 import (
-	"blockchain-shop/internal/model"
-	"blockchain-shop/internal/repository/mysql"
-	"blockchain-shop/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 )
 
 type UserService struct {

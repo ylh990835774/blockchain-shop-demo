@@ -11,5 +11,5 @@ database:
 
 jwt:
   secret_key: your-256-bit-secret
-  issuer: blockchain-shop
+  issuer: github.com/ylh990835774/blockchain-shop-demo
   expires_time: 3600

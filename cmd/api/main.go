@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"log"
 
-	"blockchain-shop/configs"
-	"blockchain-shop/internal/api"
-	"blockchain-shop/internal/api/middleware"
-	"blockchain-shop/internal/blockchain"
-	"blockchain-shop/internal/handlers"
-	"blockchain-shop/internal/repository/mysql"
-	"blockchain-shop/internal/service"
-	"blockchain-shop/pkg/logger"
-	"blockchain-shop/pkg/utils"
+	"github.com/ylh990835774/blockchain-shop-demo/configs"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/api"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/api/middleware"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/handlers"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -28,7 +28,7 @@ func main() {
 	// 初始化日志
 	loggerCfg := &logger.Config{
 		Level:      "info",
-		Filename:   "./storage/logs/blockchain-shop.log",
+		Filename:   "./storage/logs/github.com/ylh990835774/blockchain-shop-demo.log",
 		MaxSize:    500,
 		MaxBackups: 10,
 		MaxAge:     30,

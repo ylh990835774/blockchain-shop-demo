@@ -1,8 +1,8 @@
 package service
 
 import (
-	"blockchain-shop/internal/blockchain"
-	"blockchain-shop/internal/repository/mysql"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
 )
 
 type Services struct {

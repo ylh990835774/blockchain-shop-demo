@@ -3,8 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	"blockchain-shop/pkg/errors"
-	"blockchain-shop/pkg/logger"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

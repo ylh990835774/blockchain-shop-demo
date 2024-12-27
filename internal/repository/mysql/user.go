@@ -3,7 +3,7 @@ package mysql
 import (
 	"errors"
 
-	"blockchain-shop/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 
 	"gorm.io/gorm"
 )

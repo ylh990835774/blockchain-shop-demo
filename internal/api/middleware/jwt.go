@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"blockchain-shop/pkg/errors"
-	"blockchain-shop/pkg/jwt"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 )

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"blockchain-shop/internal/model"
-	pkgerrors "blockchain-shop/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
+	pkgerrors "github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 
 	"github.com/gin-gonic/gin"
 )

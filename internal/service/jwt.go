@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"blockchain-shop/pkg/jwt"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/jwt"
 )
 
 type JWTService struct {

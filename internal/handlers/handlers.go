@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"blockchain-shop/internal/blockchain"
-	"blockchain-shop/internal/service"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
 )
 
 type Handlers struct {

@@ -1,8 +1,8 @@
 package api
 
 import (
-	"blockchain-shop/internal/api/middleware"
-	"blockchain-shop/internal/handlers"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/api/middleware"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/handlers"
 
 	"github.com/gin-gonic/gin"
 )

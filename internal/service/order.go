@@ -3,10 +3,10 @@ package service
 import (
 	"encoding/json"
 
-	"blockchain-shop/internal/blockchain"
-	"blockchain-shop/internal/model"
-	"blockchain-shop/internal/repository/mysql"
-	"blockchain-shop/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 )
 
 type OrderService struct {
