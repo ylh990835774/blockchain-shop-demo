@@ -5,11 +5,9 @@ import (
 )
 
 type Config struct {
-	Server       ServerConfig
-	Database     DatabaseConfig
-	JWT          JWTConfig
-	JWTSecretKey string `mapstructure:"jwt_secret_key"`
-	JWTIssuer    string `mapstructure:"jwt_issuer"`
+	Server   ServerConfig
+	Database DatabaseConfig
+	JWT      JWTConfig
 }
 
 type ServerConfig struct {
@@ -25,8 +23,9 @@ type DatabaseConfig struct {
 }
 
 type JWTConfig struct {
-	Secret string
-	Expire int // 过期时间（小时）
+	SecretKey string `mapstructure:"secret_key"`
+	Issuer    string `mapstructure:"issuer"`
+	Expire    int    `mapstructure:"expire"` // 过期时间（小时）
 }
 
 func LoadConfig() (*Config, error) {

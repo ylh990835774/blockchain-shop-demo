@@ -41,7 +41,7 @@ func main() {
 	defer logger.Sync()
 
 	// 初始化 JWT
-	utils.InitJWT(config.JWT.Secret)
+	utils.InitJWT(config.JWT.SecretKey)
 
 	// 初始化数据库
 	db, err := mysql.NewDB(&mysql.Config{
@@ -70,7 +70,7 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	productService := service.NewProductService(productRepo)
 	orderService := service.NewOrderService(orderRepo, productService, blockchainSvc)
-	jwtService := service.NewJWTService(config.JWTSecretKey, config.JWTIssuer)
+	jwtService := service.NewJWTService(config.JWT.SecretKey, config.JWT.Issuer)
 
 	// 初始化 API 处理器
 	apiHandlers := handlers.NewHandlers(userService, productService, orderService, blockchainSvc, jwtService)
@@ -86,7 +86,7 @@ func main() {
 	api.RegisterRoutes(r, apiHandlers)
 
 	// 注册 JWT 中间件
-	authMiddleware, err := middleware.NewJWTMiddleware(config.JWTSecretKey, config.JWTIssuer)
+	authMiddleware, err := middleware.NewJWTMiddleware(config.JWT.SecretKey, config.JWT.Issuer)
 	if err != nil {
 		logger.Fatal("初始化 JWT 中间件失败", zap.Error(err))
 	}

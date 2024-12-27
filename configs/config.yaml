@@ -13,6 +13,3 @@ jwt:
   secret_key: your-256-bit-secret
   issuer: blockchain-shop
   expires_time: 3600
-
-jwt_secret_key: your-256-bit-secret
-jwt_issuer: blockchain-shop
