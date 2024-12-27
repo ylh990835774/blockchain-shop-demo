@@ -1,0 +1,106 @@
+@hostname = localhost
+@port = 38080
+@host = http://{{hostname}}:{{port}}
+@contentTypeJSON = application/json
+
+### 用户注册
+# @name user_register
+POST {{host}}/api/v1/users/register
+Content-Type: {{contentTypeJSON}}
+
+{
+  "username": "testuser",
+  "password": "123456",
+  "phone": "13800138000"
+}
+
+### 用户登录
+# @name user_login
+POST {{host}}/api/v1/users/login
+Content-Type: {{contentTypeJSON}}
+
+{
+  "username": "testuser",
+  "password": "123456"
+}
+
+### 获取商品列表
+# @name product_list
+GET {{host}}/api/v1/products?page=1&page_size=10
+
+### 获取单个商品详情
+# @name product_detail
+GET {{host}}/api/v1/products/1
+
+### 获取用户个人信息
+# @name user_profile
+GET {{host}}/api/v1/users/profile
+Authorization: Bearer {{user_login.response.body.data.token}}
+
+### 更新用户个人信息
+# @name user_profile_update
+PUT {{host}}/api/v1/users/profile
+Authorization: Bearer {{user_login.response.body.data.token}}
+Content-Type: {{contentTypeJSON}}
+
+{
+  "phone": "13800138001",
+  "address": "New Address"
+}
+
+### 添加新商品
+# @name product_create
+POST {{host}}/api/v1/products
+Authorization: Bearer {{user_login.response.body.data.token}}
+Content-Type: {{contentTypeJSON}}
+
+{
+  "name": "New Product",
+  "description": "This is a new product",
+  "price": 9.99,
+  "stock": 100
+}
+
+### 更新商品信息
+# @name product_update
+PUT {{host}}/api/v1/products/1
+Authorization: Bearer {{user_login.response.body.data.token}}
+Content-Type: {{contentTypeJSON}}
+
+{
+  "name": "Updated Product",
+  "description": "This product has been updated",
+  "price": 19.99,
+  "stock": 50
+}
+
+### 删除商品
+# @name product_delete
+DELETE {{host}}/api/v1/products/1
+Authorization: Bearer {{user_login.response.body.data.token}}
+
+### 创建新订单
+# @name order_create
+POST {{host}}/api/v1/orders
+Authorization: Bearer {{user_login.response.body.data.token}}
+Content-Type: {{contentTypeJSON}}
+
+{
+  "product_id": 1,
+  "quantity": 2
+}
+
+### 获取订单列表
+# @name order_list
+GET {{host}}/api/v1/orders?page=1&page_size=10
+Authorization: Bearer {{user_login.response.body.data.token}}
+
+### 获取单个订单详情
+# @name order_detail
+GET {{host}}/api/v1/orders/1
+Authorization: Bearer {{user_login.response.body.data.token}}
+
+### 获取单个订单的区块链交易信息
+# @name order_transaction
+GET {{host}}/api/v1/orders/3/transaction
+Authorization: Bearer {{user_login.response.body.data.token}}

@@ -1,0 +1,18 @@
+server:
+  host: localhost
+  port: 38080
+
+database:
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: "123456"
+  database: blockchain_shop
+
+jwt:
+  secret_key: your-256-bit-secret
+  issuer: blockchain-shop
+  expires_time: 3600
+
+jwt_secret_key: your-256-bit-secret
+jwt_issuer: blockchain-shop
