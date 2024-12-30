@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
-	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	customerrors "github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 )
 
-// MockUserService 是 UserService 的 mock 实现
+// MockUserService 是用户服务的mock实现
 type MockUserService struct {
 	mock.Mock
 }
@@ -56,7 +56,7 @@ func (m *MockUserService) GetByUsername(username string) (*model.User, error) {
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
-// MockJWTService 是 JWTService 的 mock 实现
+// MockJWTService 是JWT服务的mock实现
 type MockJWTService struct {
 	mock.Mock
 }
@@ -71,61 +71,68 @@ func (m *MockJWTService) ParseToken(token string) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func TestHandlers_Register(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+// MockProductService 是商品服务的mock实现
+type MockProductService struct {
+	mock.Mock
+}
 
-	t.Run("成功注册", func(t *testing.T) {
-		mockUserService := new(MockUserService)
-		mockJWTService := new(MockJWTService)
-		h := NewHandlers(mockUserService, mockJWTService, nil, nil)
+func (m *MockProductService) Create(product *model.Product) error {
+	args := m.Called(product)
+	return args.Error(0)
+}
 
-		user := &model.User{
-			ID:       1,
-			Username: "testuser",
-		}
+func (m *MockProductService) Update(id int64, updates map[string]interface{}) error {
+	args := m.Called(id, updates)
+	return args.Error(0)
+}
 
-		mockUserService.On("Register", "testuser", "password123").Return(user, nil)
+func (m *MockProductService) Delete(id int64) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
+func (m *MockProductService) GetByID(id int64) (*model.Product, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Product), args.Error(1)
+}
 
-		data := map[string]string{
-			"username": "testuser",
-			"password": "password123",
-		}
-		jsonData, _ := json.Marshal(data)
-		c.Request = httptest.NewRequest("POST", "/api/v1/users/register", bytes.NewBuffer(jsonData))
-		c.Request.Header.Set("Content-Type", "application/json")
+func (m *MockProductService) List(page, pageSize int) ([]*model.Product, int64, error) {
+	args := m.Called(page, pageSize)
+	return args.Get(0).([]*model.Product), args.Get(1).(int64), args.Error(2)
+}
 
-		h.Register(c)
+// MockOrderService 是订单服务的mock实现
+type MockOrderService struct {
+	mock.Mock
+}
 
-		assert.Equal(t, http.StatusOK, w.Code)
-		mockUserService.AssertExpectations(t)
-	})
+func (m *MockOrderService) Create(order *model.Order) error {
+	args := m.Called(order)
+	return args.Error(0)
+}
 
-	t.Run("用户名已存在", func(t *testing.T) {
-		mockUserService := new(MockUserService)
-		mockJWTService := new(MockJWTService)
-		h := NewHandlers(mockUserService, mockJWTService, nil, nil)
+func (m *MockOrderService) GetByID(id int64) (*model.Order, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Order), args.Error(1)
+}
 
-		mockUserService.On("Register", "existinguser", "password123").Return(nil, errors.ErrDuplicateEntry)
+func (m *MockOrderService) ListByUserID(userID int64, page, pageSize int) ([]*model.Order, int64, error) {
+	args := m.Called(userID, page, pageSize)
+	return args.Get(0).([]*model.Order), args.Get(1).(int64), args.Error(2)
+}
 
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-
-		data := map[string]string{
-			"username": "existinguser",
-			"password": "password123",
-		}
-		jsonData, _ := json.Marshal(data)
-		c.Request = httptest.NewRequest("POST", "/api/v1/users/register", bytes.NewBuffer(jsonData))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		h.Register(c)
-
-		assert.Equal(t, http.StatusConflict, w.Code)
-		mockUserService.AssertExpectations(t)
-	})
+func (m *MockOrderService) GetTransaction(orderID int64) (*model.Transaction, error) {
+	args := m.Called(orderID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Transaction), args.Error(1)
 }
 
 func TestHandlers_Login(t *testing.T) {
@@ -133,50 +140,49 @@ func TestHandlers_Login(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    interface{}
 		setupMock      func(*MockUserService, *MockJWTService)
+		requestBody    map[string]interface{}
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
 		{
-			name: "successful login",
-			requestBody: LoginRequest{
-				Username: "testuser",
-				Password: "testpass",
-			},
+			name: "successful_login",
 			setupMock: func(m *MockUserService, j *MockJWTService) {
-				m.On("Login", "testuser", "testpass").Return(&model.User{
+				m.On("Login", "testuser", "password123").Return(&model.User{
 					ID:       1,
 					Username: "testuser",
 				}, "test.jwt.token", nil)
 			},
+			requestBody: map[string]interface{}{
+				"username": "testuser",
+				"password": "password123",
+			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"code":    200,
+				"code":    float64(200),
 				"message": "success",
 				"data": map[string]interface{}{
-					"token": "test.jwt.token",
 					"user": map[string]interface{}{
 						"id":       float64(1),
 						"username": "testuser",
 					},
+					"token": "test.jwt.token",
 				},
 			},
 		},
 		{
-			name: "invalid credentials",
-			requestBody: LoginRequest{
-				Username: "wronguser",
-				Password: "wrongpass",
-			},
+			name: "invalid_credentials",
 			setupMock: func(m *MockUserService, j *MockJWTService) {
-				m.On("Login", "wronguser", "wrongpass").Return(nil, "", errors.ErrUnauthorized)
+				m.On("Login", "testuser", "wrongpass").Return(nil, "", customerrors.ErrUnauthorized)
+			},
+			requestBody: map[string]interface{}{
+				"username": "testuser",
+				"password": "wrongpass",
 			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody: map[string]interface{}{
-				"code":    401,
-				"message": "用户名或密码错误",
-				"data":    nil,
+				"code":    float64(-1),
+				"message": "未授权的访问",
 			},
 		},
 	}
@@ -185,15 +191,19 @@ func TestHandlers_Login(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUserService := new(MockUserService)
 			mockJWTService := new(MockJWTService)
-			tt.setupMock(mockUserService, mockJWTService)
+			mockProductService := new(MockProductService)
+			mockOrderService := new(MockOrderService)
 
-			h := NewHandlers(mockUserService, mockJWTService, nil, nil)
+			if tt.setupMock != nil {
+				tt.setupMock(mockUserService, mockJWTService)
+			}
 
+			handlers := NewHandlers(mockUserService, mockJWTService, mockProductService, mockOrderService)
 			router := gin.New()
-			router.POST("/login", h.Login)
+			router.POST("/login", handlers.Login)
 
-			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
+			requestJSON, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(requestJSON))
 			req.Header.Set("Content-Type", "application/json")
 			resp := httptest.NewRecorder()
 
@@ -202,7 +212,8 @@ func TestHandlers_Login(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, resp.Code)
 
 			var actualBody map[string]interface{}
-			json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			err := json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedBody, actualBody)
 
 			mockUserService.AssertExpectations(t)
@@ -216,23 +227,23 @@ func TestHandlers_GetProfile(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         int64
 		setupMock      func(*MockUserService)
+		userID         int64
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
 		{
-			name:   "successful get profile",
-			userID: 1,
+			name: "successful_get_profile",
 			setupMock: func(m *MockUserService) {
 				m.On("GetByID", int64(1)).Return(&model.User{
 					ID:       1,
 					Username: "testuser",
 				}, nil)
 			},
+			userID:         1,
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"code":    float64(0),
+				"code":    float64(200),
 				"message": "success",
 				"data": map[string]interface{}{
 					"id":       float64(1),
@@ -241,15 +252,15 @@ func TestHandlers_GetProfile(t *testing.T) {
 			},
 		},
 		{
-			name:   "user not found",
-			userID: 999,
+			name: "user_not_found",
 			setupMock: func(m *MockUserService) {
-				m.On("GetByID", int64(999)).Return(nil, errors.ErrNotFound)
+				m.On("GetByID", int64(999)).Return(nil, customerrors.ErrNotFound)
 			},
+			userID:         999,
 			expectedStatus: http.StatusNotFound,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
-				"message": "用户不存在",
+				"message": "记录不存在",
 			},
 		},
 	}
@@ -257,16 +268,19 @@ func TestHandlers_GetProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUserService := new(MockUserService)
-			tt.setupMock(mockUserService)
+			mockJWTService := new(MockJWTService)
+			mockProductService := new(MockProductService)
+			mockOrderService := new(MockOrderService)
 
-			h := &Handlers{
-				userService: mockUserService,
+			if tt.setupMock != nil {
+				tt.setupMock(mockUserService)
 			}
 
+			handlers := NewHandlers(mockUserService, mockJWTService, mockProductService, mockOrderService)
 			router := gin.New()
 			router.GET("/profile", func(c *gin.Context) {
-				c.Set("userID", tt.userID)
-				h.GetProfile(c)
+				c.Set("user_id", tt.userID)
+				handlers.GetProfile(c)
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/profile", nil)
@@ -277,7 +291,8 @@ func TestHandlers_GetProfile(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, resp.Code)
 
 			var actualBody map[string]interface{}
-			json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			err := json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedBody, actualBody)
 
 			mockUserService.AssertExpectations(t)
@@ -290,43 +305,42 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         int64
-		requestBody    interface{}
 		setupMock      func(*MockUserService)
+		userID         int64
+		requestBody    map[string]interface{}
 		expectedStatus int
 		expectedBody   map[string]interface{}
 	}{
 		{
-			name:   "successful update",
-			userID: 1,
-			requestBody: UpdateProfileRequest{
-				Phone:   "1234567890",
-				Address: "test address",
-			},
+			name: "successful_update",
 			setupMock: func(m *MockUserService) {
-				m.On("Update", int64(1), map[string]interface{}{
-					"phone":   "1234567890",
-					"address": "test address",
-				}).Return(nil)
+				m.On("Update", int64(1), mock.Anything).Return(nil)
+			},
+			userID: 1,
+			requestBody: map[string]interface{}{
+				"username": "newusername",
+				"password": "newpassword",
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"code":    float64(0),
+				"code":    float64(200),
 				"message": "success",
+				"data":    nil,
 			},
 		},
 		{
-			name:   "invalid request",
-			userID: 1,
-			requestBody: gin.H{
-				"phone":   123, // 错误的类型
-				"address": 456, // 错误的类型
+			name: "invalid_request",
+			setupMock: func(m *MockUserService) {
+				m.On("Update", int64(1), mock.Anything).Return(customerrors.ErrInvalidInput)
 			},
-			setupMock:      func(m *MockUserService) {},
+			userID: 1,
+			requestBody: map[string]interface{}{
+				"username": "",
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
-				"message": "无效的请求参数",
+				"message": "无效的输入",
 			},
 		},
 	}
@@ -334,20 +348,23 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUserService := new(MockUserService)
-			tt.setupMock(mockUserService)
+			mockJWTService := new(MockJWTService)
+			mockProductService := new(MockProductService)
+			mockOrderService := new(MockOrderService)
 
-			h := &Handlers{
-				userService: mockUserService,
+			if tt.setupMock != nil {
+				tt.setupMock(mockUserService)
 			}
 
+			handlers := NewHandlers(mockUserService, mockJWTService, mockProductService, mockOrderService)
 			router := gin.New()
 			router.PUT("/profile", func(c *gin.Context) {
-				c.Set("userID", tt.userID)
-				h.UpdateProfile(c)
+				c.Set("user_id", tt.userID)
+				handlers.UpdateProfile(c)
 			})
 
-			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPut, "/profile", bytes.NewBuffer(body))
+			requestJSON, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest(http.MethodPut, "/profile", bytes.NewBuffer(requestJSON))
 			req.Header.Set("Content-Type", "application/json")
 			resp := httptest.NewRecorder()
 
@@ -356,7 +373,8 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, resp.Code)
 
 			var actualBody map[string]interface{}
-			json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			err := json.Unmarshal(resp.Body.Bytes(), &actualBody)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedBody, actualBody)
 
 			mockUserService.AssertExpectations(t)

@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 )
 
@@ -49,8 +50,10 @@ func TestJWTMiddleware(t *testing.T) {
 			expectedUserID: float64(123),
 		},
 		{
-			name:           "missing auth header",
-			setupAuth:      func(req *http.Request) {},
+			name: "missing auth header",
+			setupAuth: func(req *http.Request) {
+				// 不设置Authorization头
+			},
 			setupMock:      func(m *MockJWTService) {},
 			expectedStatus: http.StatusUnauthorized,
 			expectedUserID: nil,
@@ -88,25 +91,24 @@ func TestJWTMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockJWTService := new(MockJWTService)
-			tt.setupMock(mockJWTService)
+			mockService := new(MockJWTService)
+			tt.setupMock(mockService)
 
-			middleware := NewJWTMiddleware(mockJWTService)
-
+			middleware := NewJWTMiddleware(mockService)
 			router := gin.New()
 			router.Use(middleware.MiddlewareFunc())
 			router.GET("/test", func(c *gin.Context) {
-				userID, exists := c.Get("userID")
+				userID, exists := c.Get("user_id")
 				if !exists {
 					userID = nil
 				}
-				c.JSON(http.StatusOK, gin.H{
-					"userID": userID,
-				})
+				c.JSON(http.StatusOK, gin.H{"user_id": userID})
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			tt.setupAuth(req)
+			if tt.setupAuth != nil {
+				tt.setupAuth(req)
+			}
 			resp := httptest.NewRecorder()
 
 			router.ServeHTTP(resp, req)
@@ -114,13 +116,13 @@ func TestJWTMiddleware(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, resp.Code)
 
 			if tt.expectedStatus == http.StatusOK {
-				var response map[string]interface{}
-				err := json.NewDecoder(resp.Body).Decode(&response)
+				var result map[string]interface{}
+				err := json.Unmarshal(resp.Body.Bytes(), &result)
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedUserID, response["userID"])
+				assert.Equal(t, tt.expectedUserID, result["user_id"])
 			}
 
-			mockJWTService.AssertExpectations(t)
+			mockService.AssertExpectations(t)
 		})
 	}
 }
@@ -128,30 +130,30 @@ func TestJWTMiddleware(t *testing.T) {
 func TestNewJWTMiddleware(t *testing.T) {
 	tests := []struct {
 		name        string
-		jwtService  *MockJWTService
-		expectPanic bool
+		service     service.IJWTService
+		shouldPanic bool
 	}{
 		{
 			name:        "valid parameters",
-			jwtService:  new(MockJWTService),
-			expectPanic: false,
+			service:     new(MockJWTService),
+			shouldPanic: false,
 		},
 		{
 			name:        "nil service",
-			jwtService:  nil,
-			expectPanic: true,
+			service:     nil,
+			shouldPanic: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.expectPanic {
+			if tt.shouldPanic {
 				assert.Panics(t, func() {
-					NewJWTMiddleware(tt.jwtService)
+					NewJWTMiddleware(tt.service)
 				})
 			} else {
 				assert.NotPanics(t, func() {
-					middleware := NewJWTMiddleware(tt.jwtService)
+					middleware := NewJWTMiddleware(tt.service)
 					assert.NotNil(t, middleware)
 				})
 			}
@@ -162,17 +164,14 @@ func TestNewJWTMiddleware(t *testing.T) {
 func TestJWTMiddleware_ExpiredToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockJWTService := new(MockJWTService)
-	mockJWTService.On("ParseToken", "expired.token").Return(int64(0), errors.ErrUnauthorized)
+	mockService := new(MockJWTService)
+	mockService.On("ParseToken", "expired.token").Return(int64(0), errors.ErrUnauthorized)
 
-	middleware := NewJWTMiddleware(mockJWTService)
-
+	middleware := NewJWTMiddleware(mockService)
 	router := gin.New()
 	router.Use(middleware.MiddlewareFunc())
 	router.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "success",
-		})
+		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -182,5 +181,5 @@ func TestJWTMiddleware_ExpiredToken(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusUnauthorized, resp.Code)
-	mockJWTService.AssertExpectations(t)
+	mockService.AssertExpectations(t)
 }

@@ -49,16 +49,22 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 			switch err.Err {
 			case errors.ErrNotFound:
 				statusCode = http.StatusNotFound
-				message = "资源未找到"
+				message = "记录不存在"
 			case errors.ErrUnauthorized:
 				statusCode = http.StatusUnauthorized
-				message = "未授权访问"
+				message = "未授权的访问"
 			case errors.ErrForbidden:
 				statusCode = http.StatusForbidden
 				message = "禁止访问"
 			case errors.ErrBadRequest:
 				statusCode = http.StatusBadRequest
 				message = "请求参数错误"
+			case errors.ErrInvalidInput:
+				statusCode = http.StatusBadRequest
+				message = "无效的输入"
+			case errors.ErrDuplicateEntry:
+				statusCode = http.StatusConflict
+				message = "记录已存在"
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "服务器内部错误"
@@ -66,7 +72,10 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 		}
 
 		// 使用标准响应结构
-		c.JSON(statusCode, response.Error(statusCode, message))
+		c.JSON(statusCode, gin.H{
+			"code":    -1,
+			"message": message,
+		})
 	}
 }
 

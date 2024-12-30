@@ -50,12 +50,13 @@ func (m *JWTMiddleware) MiddlewareFunc() gin.HandlerFunc {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"code":    -1,
-				"message": "无效的认证令牌" + err.Error() + "(token:" + token + ")",
+				"message": "未授权的访问",
 			})
 			return
 		}
 
-		c.Set("userID", userID)
+		// 将用户ID存储在上下文中
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }
