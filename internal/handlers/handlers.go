@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
-	"github.com/ylh990835774/blockchain-shop-demo/pkg/response"
 )
 
 // Handlers 包含所有HTTP处理器
@@ -41,125 +39,103 @@ func (h *Handlers) ListProducts(c *gin.Context) {
 
 	products, total, err := h.productService.List(page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
+		handleError(c, err, "获取商品列表")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(gin.H{
+	handleSuccess(c, gin.H{
 		"total":    total,
 		"products": products,
-	}))
+	}, "获取商品列表")
 }
 
 // GetProduct 获取商品详情
 func (h *Handlers) GetProduct(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的商品ID"))
+		handleError(c, errors.ErrInvalidInput, "获取商品详情-参数验证")
 		return
 	}
 
 	product, err := h.productService.GetByID(id)
 	if err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "商品不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "获取商品详情")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(product))
+	handleSuccess(c, product, "获取商品详情")
 }
 
 // CreateProduct 创建商品
 func (h *Handlers) CreateProduct(c *gin.Context) {
 	var product model.Product
 	if err := c.ShouldBindJSON(&product); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的请求参数"))
+		handleError(c, errors.ErrInvalidInput, "创建商品-参数验证")
 		return
 	}
 
 	if err := h.productService.Create(&product); err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
+		handleError(c, err, "创建商品")
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.Success(product))
+	handleSuccess(c, product, "创建商品")
 }
 
 // UpdateProduct 更新商品
 func (h *Handlers) UpdateProduct(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的商品ID"))
+		handleError(c, errors.ErrInvalidInput, "更新商品-参数验证")
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的请求参数"))
+		handleError(c, errors.ErrInvalidInput, "更新商品-参数验证")
 		return
 	}
 
 	if err := h.productService.Update(id, updates); err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "商品不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "更新商品")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(nil))
+	handleSuccess(c, nil, "更新商品")
 }
 
 // DeleteProduct 删除商品
 func (h *Handlers) DeleteProduct(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的商品ID"))
+		handleError(c, errors.ErrInvalidInput, "删除商品-参数验证")
 		return
 	}
 
 	if err := h.productService.Delete(id); err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "商品不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "删除商品")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(nil))
+	handleSuccess(c, nil, "删除商品")
 }
 
 // CreateOrder 创建订单
 func (h *Handlers) CreateOrder(c *gin.Context) {
 	var req CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的请求参数"))
+		handleError(c, errors.ErrInvalidInput, "创建订单-参数验证")
 		return
 	}
 
 	userID := c.GetInt64("user_id")
 
-	// 获取商品信息
 	product, err := h.productService.GetByID(req.ProductID)
 	if err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "商品不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "创建订单-获取商品信息")
 		return
 	}
 
-	// 创建订单
 	order := &model.Order{
 		UserID:     userID,
 		ProductID:  req.ProductID,
@@ -169,16 +145,11 @@ func (h *Handlers) CreateOrder(c *gin.Context) {
 	}
 
 	if err := h.orderService.Create(order); err != nil {
-		switch err {
-		case errors.ErrInsufficientStock:
-			c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "库存不足"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "创建订单")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(order))
+	handleSuccess(c, order, "创建订单")
 }
 
 // ListOrders 获取订单列表
@@ -189,14 +160,14 @@ func (h *Handlers) ListOrders(c *gin.Context) {
 
 	orders, total, err := h.orderService.ListByUserID(userID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
+		handleError(c, err, "获取订单列表")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(gin.H{
+	handleSuccess(c, gin.H{
 		"total":  total,
 		"orders": orders,
-	}))
+	}, "获取订单列表")
 }
 
 // GetOrder 获取订单详情
@@ -204,28 +175,23 @@ func (h *Handlers) GetOrder(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的订单ID"))
+		handleError(c, errors.ErrInvalidInput, "获取订单详情-参数验证")
 		return
 	}
 
 	order, err := h.orderService.GetByID(orderID)
 	if err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "订单不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "获取订单详情")
 		return
 	}
 
 	// 验证订单所属用户
 	if order.UserID != userID {
-		c.JSON(http.StatusForbidden, response.Error(http.StatusForbidden, "无权访问此订单"))
+		handleError(c, errors.ErrUnauthorized, "获取订单详情-权限验证")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(order))
+	handleSuccess(c, order, "获取订单详情")
 }
 
 // GetOrderTransaction 获取订单的区块链交易信息
@@ -233,39 +199,29 @@ func (h *Handlers) GetOrderTransaction(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的订单ID"))
+		handleError(c, errors.ErrInvalidInput, "获取订单交易信息-参数验证")
 		return
 	}
 
 	// 先获取订单信息，验证权限
 	order, err := h.orderService.GetByID(orderID)
 	if err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "订单不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "获取订单交易信息-订单验证")
 		return
 	}
 
 	// 验证订单所属用户
 	if order.UserID != userID {
-		c.JSON(http.StatusForbidden, response.Error(http.StatusForbidden, "无权访问此订单"))
+		handleError(c, errors.ErrUnauthorized, "获取订单交易信息-权限验证")
 		return
 	}
 
 	// 获取交易信息
 	transaction, err := h.orderService.GetTransaction(orderID)
 	if err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, response.Error(http.StatusNotFound, "交易信息不存在"))
-		default:
-			c.JSON(http.StatusInternalServerError, response.Error(http.StatusInternalServerError, "服务器内部错误"))
-		}
+		handleError(c, err, "获取订单交易信息")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(transaction))
+	handleSuccess(c, transaction, "获取订单交易信息")
 }

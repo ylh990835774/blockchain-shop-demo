@@ -71,7 +71,7 @@ Content-Type: {{contentTypeJSON}}
   "name": "demo4 product updated",
   "description": "This product has been updated",
   "price": 19.99,
-  "stock": 1111111111111111111111111111111111111111111111111111111
+  "stock": 333
 }
 
 ### 删除商品
