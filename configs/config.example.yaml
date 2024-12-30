@@ -15,6 +15,7 @@ jwt:
   expireDurationHours: 24 # token有效期（小时）
 
 log:
-  level: debug # debug, info, warn, error
-  encoding: json # json or console
-  outputPath: ./storage/logs/app.log # 日志文件路径
+  level: debug # debug, info, warn, error，默认info
+  encoding: json # json or console，默认json
+  filename: ./storage/logs/app.log # 日志文件路径，不填写则输出到控制台
+  console: false # 是否输出到控制台，默认false

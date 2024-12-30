@@ -42,9 +42,6 @@ func Setup(cfg *Config) error {
 	if cfg.Level == "" {
 		cfg.Level = "info" // 默认INFO级别
 	}
-	if cfg.Filename == "" {
-		cfg.Filename = "./storage/logs/app.log" // 默认使用JSON格式
-	}
 
 	// 创建基本的encoder配置
 	encoderConfig := zapcore.EncoderConfig{
@@ -72,7 +69,7 @@ func Setup(cfg *Config) error {
 	// 确保日志目录存在
 	if cfg.Filename != "" {
 		logDir := filepath.Dir(cfg.Filename)
-		if err := os.MkdirAll(logDir, 0o755); err != nil {
+		if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
 			return fmt.Errorf("创建日志目录失败: %v", err)
 		}
 	}
@@ -106,7 +103,7 @@ func Setup(cfg *Config) error {
 	}
 
 	// 控制台输出
-	if cfg.Console {
+	if cfg.Console || cfg.Filename == "" {
 		consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
 		cores = append(cores, zapcore.NewCore(
 			consoleEncoder,
