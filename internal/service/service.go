@@ -1,26 +1,18 @@
 package service
 
 import (
-	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
-	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 )
 
-type Services struct {
-	User    UserService
-	Product ProductService
-	Order   OrderService
+// UserService 定义用户服务接口
+type UserService interface {
+	Register(username, password string) (*model.User, error)
+	Login(username, password string) (*model.User, error)
+	GetByID(id int64) (*model.User, error)
+	Update(id int64, updates map[string]interface{}) error
 }
 
-func NewServices(
-	userRepo *mysql.UserRepository,
-	productRepo *mysql.ProductRepository,
-	orderRepo *mysql.OrderRepository,
-	blockchainSvc blockchain.Service,
-) *Services {
-	productService := NewProductService(productRepo)
-	return &Services{
-		User:    *NewUserService(userRepo),
-		Product: *productService,
-		Order:   *NewOrderService(orderRepo, productService, blockchainSvc),
-	}
+// JWTService 定义JWT服务接口
+type JWTService interface {
+	GenerateToken(userID int64) (string, error)
 }

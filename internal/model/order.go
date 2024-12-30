@@ -23,3 +23,14 @@ type Order struct {
 	CreatedAt  time.Time   `json:"created_at"`
 	UpdatedAt  time.Time   `json:"updated_at"`
 }
+
+// Transaction 区块链交易信息
+type Transaction struct {
+	TxHash    string    `json:"tx_hash"`
+	From      string    `json:"from"`
+	To        string    `json:"to"`
+	Value     string    `json:"value"`
+	Status    bool      `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+	OrderID   int64     `json:"order_id"`
+}

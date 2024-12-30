@@ -1,18 +1,18 @@
 package mysql
 
 import (
-	"errors"
-
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository"
 
 	"gorm.io/gorm"
 )
 
-var ErrNotFound = errors.New("record not found")
-
 type UserRepository struct {
 	BaseRepository
 }
+
+// 确保UserRepository实现了repository.UserRepository接口
+var _ repository.UserRepository = (*UserRepository)(nil)
 
 func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{
@@ -28,6 +28,9 @@ func (r *UserRepository) GetByID(id int64) (*model.User, error) {
 	var user model.User
 	err := r.db.First(&user, id).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -37,6 +40,9 @@ func (r *UserRepository) GetByUsername(username string) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("username = ?", username).First(&user).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &user, nil

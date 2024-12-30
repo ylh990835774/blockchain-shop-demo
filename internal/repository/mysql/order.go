@@ -2,18 +2,15 @@ package mysql
 
 import (
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
-
 	"gorm.io/gorm"
 )
 
 type OrderRepository struct {
-	BaseRepository
+	db *gorm.DB
 }
 
 func NewOrderRepository(db *gorm.DB) *OrderRepository {
-	return &OrderRepository{
-		BaseRepository: NewBaseRepository(db),
-	}
+	return &OrderRepository{db: db}
 }
 
 func (r *OrderRepository) Create(order *model.Order) error {
@@ -28,30 +25,35 @@ func (r *OrderRepository) GetByID(id int64) (*model.Order, error) {
 	var order model.Order
 	err := r.db.First(&order, id).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &order, nil
 }
 
-func (r *OrderRepository) ListByUserID(userID int64, page, pageSize int) ([]*model.Order, int64, error) {
+func (r *OrderRepository) List(userID int64, offset, limit int) ([]*model.Order, int64, error) {
 	var orders []*model.Order
 	var total int64
-
-	offset := (page - 1) * pageSize
 
 	err := r.db.Model(&model.Order{}).Where("user_id = ?", userID).Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Where("user_id = ?", userID).Offset(offset).Limit(pageSize).Find(&orders).Error
-	return orders, total, err
-}
+	err = r.db.Where("user_id = ?", userID).Offset(offset).Limit(limit).Find(&orders).Error
+	if err != nil {
+		return nil, 0, err
+	}
 
-func (r *OrderRepository) BeginTx() *gorm.DB {
-	return r.db.Begin()
+	return orders, total, nil
 }
 
 func (r *OrderRepository) Update(order *model.Order) error {
 	return r.db.Save(order).Error
+}
+
+func (r *OrderRepository) UpdateWithTx(tx *gorm.DB, order *model.Order) error {
+	return tx.Save(order).Error
 }

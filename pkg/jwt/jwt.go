@@ -1,9 +1,15 @@
 package jwt
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+)
+
+var (
+	ErrInvalidToken = errors.New("invalid token")
+	ErrEmptyKey     = errors.New("empty secret key")
 )
 
 // Claims 包含自定义的用户ID和标准JWT声明
@@ -14,6 +20,10 @@ type Claims struct {
 
 // ParseToken 解析并验证JWT令牌
 func ParseToken(tokenString, secretKey string) (*Claims, error) {
+	if tokenString == "" || secretKey == "" {
+		return nil, ErrInvalidToken
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})
@@ -30,6 +40,10 @@ func ParseToken(tokenString, secretKey string) (*Claims, error) {
 
 // GenerateToken 生成新的JWT令牌
 func GenerateToken(userID int64, secretKey, issuer string, expireDuration time.Duration) (string, error) {
+	if secretKey == "" {
+		return "", ErrEmptyKey
+	}
+
 	claims := Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{

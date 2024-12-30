@@ -1,0 +1,20 @@
+server:
+  port: 38080
+  mode: debug # debug or release
+
+mysql:
+  host: localhost
+  port: 3306
+  username: root
+  password: 123456
+  database: blockchain_shop
+
+jwt:
+  secretKey: your-secret-key-here # 请修改为你自己的密钥
+  issuer: blockchain-shop
+  expireDurationHours: 24 # token有效期（小时）
+
+log:
+  level: debug # debug, info, warn, error
+  encoding: json # json or console
+  outputPath: ./storage/logs/app.log # 日志文件路径

@@ -2,21 +2,26 @@ package service
 
 import (
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
+	"github.com/ylh990835774/blockchain-shop-demo/internal/repository"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 )
 
-type UserService struct {
-	repo *mysql.UserRepository
+// UserService 实现了IUserService接口
+type userService struct {
+	repo repository.UserRepository
 }
 
-func NewUserService(repo *mysql.UserRepository) *UserService {
-	return &UserService{
+// 确保userService实现了IUserService接口
+var _ IUserService = (*userService)(nil)
+
+func NewUserService(repo repository.UserRepository) IUserService {
+	return &userService{
 		repo: repo,
 	}
 }
 
-func (s *UserService) Create(user *model.User) error {
+func (s *userService) Create(user *model.User) error {
 	if user == nil {
 		return errors.ErrInvalidInput
 	}
@@ -28,7 +33,7 @@ func (s *UserService) Create(user *model.User) error {
 	return s.repo.Create(user)
 }
 
-func (s *UserService) GetByID(id int64) (*model.User, error) {
+func (s *userService) GetByID(id int64) (*model.User, error) {
 	if id <= 0 {
 		return nil, errors.ErrInvalidInput
 	}
@@ -44,7 +49,7 @@ func (s *UserService) GetByID(id int64) (*model.User, error) {
 	return user, nil
 }
 
-func (s *UserService) Authenticate(username, password string) (*model.User, error) {
+func (s *userService) Authenticate(username, password string) (*model.User, error) {
 	user, err := s.GetByUsername(username)
 	if err != nil {
 		return nil, err
@@ -57,11 +62,11 @@ func (s *UserService) Authenticate(username, password string) (*model.User, erro
 	return user, nil
 }
 
-func (s *UserService) ExistsByUsername(username string) bool {
+func (s *userService) ExistsByUsername(username string) bool {
 	return s.repo.ExistsByUsername(username)
 }
 
-func (s *UserService) Update(id int64, updates map[string]interface{}) error {
+func (s *userService) Update(id int64, updates map[string]interface{}) error {
 	if id <= 0 {
 		return errors.ErrInvalidInput
 	}
@@ -76,7 +81,7 @@ func (s *UserService) Update(id int64, updates map[string]interface{}) error {
 	return s.repo.Update(id, updates)
 }
 
-func (s *UserService) Register(username, password string) (*model.User, error) {
+func (s *userService) Register(username, password string) (*model.User, error) {
 	// 检查用户是否已存在
 	if s.ExistsByUsername(username) {
 		return nil, errors.ErrDuplicateEntry
@@ -95,7 +100,7 @@ func (s *UserService) Register(username, password string) (*model.User, error) {
 	return user, nil
 }
 
-func (s *UserService) Login(username, password string) (*model.User, error) {
+func (s *userService) Login(username, password string) (*model.User, error) {
 	user, err := s.GetByUsername(username)
 	if err != nil {
 		return nil, err
@@ -108,7 +113,7 @@ func (s *UserService) Login(username, password string) (*model.User, error) {
 	return user, nil
 }
 
-func (s *UserService) GetByUsername(username string) (*model.User, error) {
+func (s *userService) GetByUsername(username string) (*model.User, error) {
 	if username == "" {
 		return nil, errors.ErrInvalidInput
 	}

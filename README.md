@@ -56,6 +56,7 @@
 - Go 1.23 或更高版本
 - MySQL 8.0 或更高版本
 - Make (可选)
+- goose (数据库迁移工具)
 
 ### 安装
 
@@ -72,19 +73,42 @@ cd blockchain-shop
 go mod download
 ```
 
-3. 配置数据库
+3. 安装数据库迁移工具
+
+```bash
+go install github.com/pressly/goose/v3/cmd/goose@latest
+```
+
+4. 配置数据库
 
 ```bash
 # 创建数据库
 mysql -u root -p
-CREATE DATABASE blockchain_shop;
+CREATE DATABASE IF NOT EXISTS blockchain_shop DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 修改配置文件
 cp configs/config.example.yaml configs/config.yaml
 # 编辑 config.yaml 设置数据库连接信息
 ```
 
-4. 运行项目
+5. 执行数据库迁移
+
+```bash
+# 使用本地 MySQL
+goose -dir migrations mysql "root:123456@tcp(localhost:3306)/blockchain_shop?parseTime=true" up
+
+# 如果使用 Docker 中的 MySQL，替换 localhost 为对应的主机地址
+goose -dir migrations mysql "root:123456@tcp(host:3306)/blockchain_shop?parseTime=true" up
+```
+
+迁移文件说明：
+
+- `000001_create_users_table.sql`: 创建用户表
+- `000002_create_products_table.sql`: 创建商品表
+- `000003_create_orders_table.sql`: 创建订单表
+- `000004_create_transactions_table.sql`: 创建区块链交易表
+
+6. 运行项目
 
 ```bash
 make run
@@ -99,7 +123,7 @@ go run cmd/api/main.go
 #### 注册用户
 
 ```http
-POST /api/v1/users/register
+POST /api/v1/register
 Content-Type: application/json
 
 {
@@ -111,7 +135,7 @@ Content-Type: application/json
 #### 用户登录
 
 ```http
-POST /api/v1/users/login
+POST /api/v1/login
 Content-Type: application/json
 
 {

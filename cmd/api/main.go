@@ -1,102 +1,105 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/ylh990835774/blockchain-shop-demo/configs"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/api"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/api/middleware"
-	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/handlers"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
-	"github.com/ylh990835774/blockchain-shop-demo/pkg/utils"
-
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 func main() {
 	// 加载配置
-	config, err := configs.LoadConfig()
+	cfg, err := configs.Load()
 	if err != nil {
-		log.Fatal("无法加载配置:", err)
+		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
 
 	// 初始化日志
-	loggerCfg := &logger.Config{
-		Level:      "info",
-		Filename:   "./storage/logs/github.com/ylh990835774/blockchain-shop-demo.log",
-		MaxSize:    500,
-		MaxBackups: 10,
-		MaxAge:     30,
-		Compress:   false,
+	logCfg := &logger.Config{
+		Level:      cfg.Log.Level,
+		Encoding:   cfg.Log.Encoding,
+		OutputPath: cfg.Log.OutputPath,
 	}
-	logger, err := logger.NewLogger(loggerCfg)
+	log, err := logger.NewLogger(logCfg)
 	if err != nil {
-		log.Fatal("初始化日志失败:", err)
+		panic(fmt.Sprintf("初始化日志失败: %v", err))
 	}
-	defer logger.Sync()
+	defer log.Sync()
 
-	// 初始化 JWT
-	utils.InitJWT(config.JWT.SecretKey)
-
-	// 初始化数据库
+	// 初始化数据库连接
 	db, err := mysql.NewDB(&mysql.Config{
-		Host:     config.Database.Host,
-		Port:     config.Database.Port,
-		Username: config.Database.Username,
-		Password: config.Database.Password,
-		Database: config.Database.Database,
+		Host:     cfg.MySQL.Host,
+		Port:     cfg.MySQL.Port,
+		Username: cfg.MySQL.Username,
+		Password: cfg.MySQL.Password,
+		Database: cfg.MySQL.Database,
 	})
 	if err != nil {
-		logger.Fatal("数据库连接失败", zap.Error(err))
+		log.Fatal("连接数据库失败", zap.Error(err))
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal("获取数据库连接失败", zap.Error(err))
+	}
+	defer sqlDB.Close()
 
-	// 初始化仓储层
+	// 初始化仓库
 	userRepo := mysql.NewUserRepository(db)
 	productRepo := mysql.NewProductRepository(db)
 	orderRepo := mysql.NewOrderRepository(db)
-
-	// 初始化区块链服务
-	blockchainSvc, err := blockchain.NewBlockchainService()
-	if err != nil {
-		logger.Fatal("创建区块链服务失败", zap.Error(err))
-	}
+	blockchainRepo := mysql.NewBlockchainRepository(db)
 
 	// 初始化服务
+	jwtService := service.NewJWTService(cfg.JWT.SecretKey, cfg.JWT.Issuer, time.Hour*time.Duration(cfg.JWT.ExpireDurationHours))
 	userService := service.NewUserService(userRepo)
 	productService := service.NewProductService(productRepo)
-	orderService := service.NewOrderService(orderRepo, productService, blockchainSvc)
-	jwtService := service.NewJWTService(config.JWT.SecretKey, config.JWT.Issuer)
+	orderService := service.NewOrderService(orderRepo, productRepo, blockchainRepo, db)
 
-	// 初始化 API 处理器
-	apiHandlers := handlers.NewHandlers(userService, productService, orderService, blockchainSvc, jwtService)
+	// 初始化处理器
+	h := handlers.NewHandlers(userService, jwtService, productService, orderService)
 
-	// 初始化 Gin 引擎
-	r := gin.New()
-
-	// 注册中间件
-	r.Use(gin.Logger(), gin.Recovery())
-	r.Use(middleware.ErrorHandler(logger))
-
-	// 注册 API 路由
-	api.RegisterRoutes(r, apiHandlers)
-
-	// 注册 JWT 中间件
-	authMiddleware, err := middleware.NewJWTMiddleware(config.JWT.SecretKey, config.JWT.Issuer)
-	if err != nil {
-		logger.Fatal("初始化 JWT 中间件失败", zap.Error(err))
-	}
-	api.RegisterAuthRoutes(r, apiHandlers, authMiddleware)
+	// 初始化路由
+	gin.SetMode(cfg.Server.Mode)
+	router := api.SetupRouter(h, log, middleware.NewJWTMiddleware(jwtService))
 
 	// 启动服务器
-	serverAddr := fmt.Sprintf(":%d", config.Server.Port)
-	logger.Info("服务器启动", zap.String("address", serverAddr))
-
-	if err := r.Run(serverAddr); err != nil {
-		logger.Fatal("服务器启动失败", zap.Error(err))
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler: router,
 	}
+
+	// 优雅关闭
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("启动服务器失败", zap.Error(err))
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info("正在关闭服务器...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("服务器关闭失败", zap.Error(err))
+	}
+
+	log.Info("服务器已关闭")
 }

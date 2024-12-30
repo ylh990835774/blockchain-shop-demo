@@ -1,102 +1,99 @@
 package service
 
 import (
-	"encoding/json"
-
-	"github.com/ylh990835774/blockchain-shop-demo/internal/blockchain"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
-	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	"gorm.io/gorm"
 )
 
 type OrderService struct {
-	repo              *mysql.OrderRepository
-	productService    *ProductService
-	blockchainService blockchain.Service
+	repo           *mysql.OrderRepository
+	productRepo    *mysql.ProductRepository
+	blockchainRepo *mysql.BlockchainRepository
+	db             *gorm.DB
 }
 
-func NewOrderService(repo *mysql.OrderRepository, productService *ProductService, blockchainService blockchain.Service) *OrderService {
+func NewOrderService(repo *mysql.OrderRepository, productRepo *mysql.ProductRepository, blockchainRepo *mysql.BlockchainRepository, db *gorm.DB) IOrderService {
 	return &OrderService{
-		repo:              repo,
-		productService:    productService,
-		blockchainService: blockchainService,
+		repo:           repo,
+		productRepo:    productRepo,
+		blockchainRepo: blockchainRepo,
+		db:             db,
 	}
 }
 
-func (s *OrderService) Create(order *model.Order) error {
-	// 检查商品是否存在
-	product, err := s.productService.GetByID(order.ProductID)
-	if err != nil {
-		return errors.ErrNotFound
+func (s *OrderService) Create(userID, productID int64, quantity int) (*model.Order, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
 	}
-
-	// 检查库存
-	if product.Stock < order.Quantity {
-		return errors.ErrInsufficientStock
-	}
-
-	// 计算总价
-	order.TotalPrice = float64(order.Quantity) * product.Price
-
-	// 记录区块链交易
-	orderBytes, err := json.Marshal(order)
-	if err != nil {
-		return err
-	}
-	txHash, err := s.blockchainService.RecordTransaction(orderBytes)
-	if err != nil {
-		return err
-	}
-	order.TxHash = txHash
-
-	// 开始事务
-	tx := s.repo.BeginTx()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
-			panic(r)
 		}
 	}()
 
-	// 创建订单
-	if err := s.repo.CreateWithTx(tx, order); err != nil {
+	// 获取商品信息（使用事务）
+	product, err := s.productRepo.GetByIDWithTx(tx, productID)
+	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 
-	// 更新库存
-	product.Stock -= order.Quantity
-	if err := s.productService.UpdateWithTx(tx, product); err != nil {
+	// 检查库存
+	if product.Stock < quantity {
 		tx.Rollback()
-		return err
+		return nil, ErrInsufficientStock
+	}
+
+	// 创建订单
+	order := &model.Order{
+		UserID:     userID,
+		ProductID:  productID,
+		Quantity:   quantity,
+		TotalPrice: product.Price * float64(quantity),
+		Status:     model.OrderStatusPending,
+	}
+
+	if err := s.repo.CreateWithTx(tx, order); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 更新商品库存
+	product.Stock -= quantity
+	if err := s.productRepo.UpdateWithTx(tx, product); err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	// 提交事务
-	if err := tx.Commit(); err != nil {
-		return err.Error
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
-	return nil
+	return order, nil
 }
 
-func (s *OrderService) GetByID(id int64) (*model.Order, error) {
+func (s *OrderService) Get(id int64) (*model.Order, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *OrderService) ListByUserID(userID int64, page, pageSize int) ([]*model.Order, int64, error) {
-	return s.repo.ListByUserID(userID, page, pageSize)
+func (s *OrderService) List(userID int64, page, pageSize int) ([]*model.Order, int64, error) {
+	offset := (page - 1) * pageSize
+	return s.repo.List(userID, offset, pageSize)
 }
 
-// GetOrderTransaction 获取订单的区块链交易信息
-func (s *OrderService) GetOrderTransaction(orderID int64) ([]byte, error) {
-	order, err := s.GetByID(orderID)
+func (s *OrderService) GetTransaction(orderID int64) (*model.Transaction, error) {
+	order, err := s.repo.GetByID(orderID)
 	if err != nil {
 		return nil, err
 	}
 
 	if order.TxHash == "" {
-		return nil, errors.ErrNotFound
+		return nil, ErrTransactionNotFound
 	}
 
-	return s.blockchainService.GetTransaction(order.TxHash)
+	return s.blockchainRepo.GetTransaction(order.TxHash)
 }

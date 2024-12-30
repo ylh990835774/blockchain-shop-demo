@@ -37,7 +37,7 @@ Content-Type: {{contentTypeJSON}}
 
 {
   "phone": "13800138001",
-  "address": "New Address"
+  "address": "xxxx address"
 }
 
 ### 获取商品列表
@@ -55,7 +55,7 @@ Authorization: Bearer {{user_login.response.body.data.token}}
 Content-Type: {{contentTypeJSON}}
 
 {
-  "name": "New Product",
+  "name": "demo test product",
   "description": "This is a new product",
   "price": 9.99,
   "stock": 100
@@ -63,15 +63,15 @@ Content-Type: {{contentTypeJSON}}
 
 ### 更新商品信息
 # @name product_update
-PUT {{host}}/api/v1/products/1
+PUT {{host}}/api/v1/products/2
 Authorization: Bearer {{user_login.response.body.data.token}}
 Content-Type: {{contentTypeJSON}}
 
 {
-  "name": "Updated Product",
+  "name": "demo product updated",
   "description": "This product has been updated",
   "price": 19.99,
-  "stock": 50
+  "stock": 9999
 }
 
 ### 删除商品

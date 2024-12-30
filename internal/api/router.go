@@ -1,52 +1,63 @@
 package api
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/api/middleware"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/handlers"
-
-	"github.com/gin-gonic/gin"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 )
 
-func RegisterRoutes(r *gin.Engine, h *handlers.Handlers) {
+// SetupRouter 设置路由
+func SetupRouter(h *handlers.Handlers, log *logger.Logger, jwtMiddleware *middleware.JWTMiddleware) *gin.Engine {
+	r := gin.New()
+
+	// 使用中间件
+	r.Use(gin.Recovery())
+	r.Use(middleware.ErrorHandler(log))
+
+	// API v1 路由组
 	v1 := r.Group("/api/v1")
 	{
-		// 用户注册
-		v1.POST("/users/register", h.Register)
-		// 用户登录
-		v1.POST("/users/login", h.Login)
+		// 用户公开接口
+		users := v1.Group("/users")
+		{
+			users.POST("/register", h.Register)
+			users.POST("/login", h.Login)
+		}
 
-		// 商品列表
+		// 公开的商品列表和详情接口
 		v1.GET("/products", h.ListProducts)
-		// 商品详情
 		v1.GET("/products/:id", h.GetProduct)
+
+		// 需要认证的接口
+		auth := v1.Group("")
+		auth.Use(jwtMiddleware.MiddlewareFunc())
+		{
+			// 用户认证接口
+			authUsers := auth.Group("/users")
+			{
+				authUsers.GET("/profile", h.GetProfile)
+				authUsers.PUT("/profile", h.UpdateProfile)
+			}
+
+			// 商品相关接口
+			products := auth.Group("/products")
+			{
+				products.POST("", h.CreateProduct)
+				products.PUT("/:id", h.UpdateProduct)
+				products.DELETE("/:id", h.DeleteProduct)
+			}
+
+			// 订单相关接口
+			orders := auth.Group("/orders")
+			{
+				orders.POST("", h.CreateOrder)
+				orders.GET("", h.ListOrders)
+				orders.GET("/:id", h.GetOrder)
+				orders.GET("/:id/transaction", h.GetOrderTransaction)
+			}
+		}
 	}
-}
 
-func RegisterAuthRoutes(r *gin.Engine, h *handlers.Handlers, authMiddleware *middleware.JWTMiddleware) {
-	v1 := r.Group("/api/v1")
-	v1.Use(authMiddleware.MiddlewareFunc())
-	{
-		// 用户相关路由
-		userGroup := v1.Group("/users")
-		{
-			userGroup.GET("/profile", h.GetProfile)
-			userGroup.PUT("/profile", h.UpdateProfile)
-		}
-
-		// 商品相关路由
-		productGroup := v1.Group("/products")
-		{
-			productGroup.POST("", h.CreateProduct)
-			productGroup.PUT("/:id", h.UpdateProduct)
-		}
-
-		// 订单相关路由
-		orderGroup := v1.Group("/orders")
-		{
-			orderGroup.POST("", h.CreateOrder)
-			orderGroup.GET("/:id", h.GetOrder)
-			orderGroup.GET("", h.ListOrders)
-			orderGroup.GET("/:id/transaction", h.GetOrderTransaction)
-		}
-	}
+	return r
 }
