@@ -1,0 +1,9 @@
+# linter configuration
+linters-settings:
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com/gin-gonic/gin
+          - github.com/ylh990835774/blockchain-shop-demo
