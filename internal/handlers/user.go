@@ -88,7 +88,7 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 
 	// 如果没有要更新的字段，返回错误
 	if len(updates) == 0 {
-		handleError(c, errors.ErrInvalidInput, "更新用户资料-无更新字段")
+		handleError(c, errors.ErrNoFieldsToUpdate, "更新用户资料-无更新字段")
 		return
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/model"
 	customerrors "github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 )
 
 // MockUserService 是用户服务的mock实现
@@ -136,6 +137,15 @@ func (m *MockOrderService) GetTransaction(orderID int64) (*model.Transaction, er
 }
 
 func TestHandlers_Login(t *testing.T) {
+	// 初始化日志配置
+	err := logger.Setup(&logger.Config{
+		Level:    "info",
+		Format:   "console",
+		Console:  true,
+		Filename: "", // 测试时不写入文件
+	})
+	assert.NoError(t, err)
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -183,6 +193,7 @@ func TestHandlers_Login(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "未授权的访问",
+				"data":    nil,
 			},
 		},
 	}
@@ -223,6 +234,15 @@ func TestHandlers_Login(t *testing.T) {
 }
 
 func TestHandlers_GetProfile(t *testing.T) {
+	// 初始化日志配置
+	err := logger.Setup(&logger.Config{
+		Level:    "info",
+		Format:   "console",
+		Console:  true,
+		Filename: "", // 测试时不写入文件
+	})
+	assert.NoError(t, err)
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -261,6 +281,7 @@ func TestHandlers_GetProfile(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "记录不存在",
+				"data":    nil,
 			},
 		},
 	}
@@ -301,6 +322,15 @@ func TestHandlers_GetProfile(t *testing.T) {
 }
 
 func TestHandlers_UpdateProfile(t *testing.T) {
+	// 初始化日志配置
+	err := logger.Setup(&logger.Config{
+		Level:    "info",
+		Format:   "console",
+		Console:  true,
+		Filename: "", // 测试时不写入文件
+	})
+	assert.NoError(t, err)
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -314,16 +344,15 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 		{
 			name: "successful_update_both_fields",
 			setupMock: func(m *MockUserService) {
-				expectedUpdates := map[string]interface{}{
-					"phone":   "13800138000",
-					"address": "北京市朝阳区",
-				}
-				m.On("Update", int64(1), expectedUpdates).Return(nil)
+				m.On("Update", int64(1), map[string]interface{}{
+					"phone":   "12345678901",
+					"address": "test address",
+				}).Return(nil)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"phone":   "13800138000",
-				"address": "北京市朝阳区",
+				"phone":   "12345678901",
+				"address": "test address",
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
@@ -335,14 +364,13 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 		{
 			name: "successful_update_phone_only",
 			setupMock: func(m *MockUserService) {
-				expectedUpdates := map[string]interface{}{
-					"phone": "13800138000",
-				}
-				m.On("Update", int64(1), expectedUpdates).Return(nil)
+				m.On("Update", int64(1), map[string]interface{}{
+					"phone": "12345678901",
+				}).Return(nil)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"phone": "13800138000",
+				"phone": "12345678901",
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
@@ -354,14 +382,13 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 		{
 			name: "successful_update_address_only",
 			setupMock: func(m *MockUserService) {
-				expectedUpdates := map[string]interface{}{
-					"address": "北京市朝阳区",
-				}
-				m.On("Update", int64(1), expectedUpdates).Return(nil)
+				m.On("Update", int64(1), map[string]interface{}{
+					"address": "test address",
+				}).Return(nil)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"address": "北京市朝阳区",
+				"address": "test address",
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
@@ -372,44 +399,44 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 		},
 		{
 			name:           "invalid_no_fields_provided",
-			setupMock:      func(m *MockUserService) {},
 			userID:         1,
 			requestBody:    map[string]interface{}{},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "至少需要更新一个字段",
+				"data":    nil,
 			},
 		},
 		{
-			name:      "invalid_phone_length",
-			setupMock: func(m *MockUserService) {},
-			userID:    1,
+			name:   "invalid_phone_length",
+			userID: 1,
 			requestBody: map[string]interface{}{
-				"phone": "138001380", // 少于11位
+				"phone": "123",
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "无效的输入",
+				"data":    nil,
 			},
 		},
 		{
 			name: "user_not_found",
 			setupMock: func(m *MockUserService) {
-				expectedUpdates := map[string]interface{}{
-					"phone": "13800138000",
-				}
-				m.On("Update", int64(1), expectedUpdates).Return(customerrors.ErrNotFound)
+				m.On("Update", int64(1), map[string]interface{}{
+					"phone": "12345678901",
+				}).Return(customerrors.ErrNotFound)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"phone": "13800138000",
+				"phone": "12345678901",
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "记录不存在",
+				"data":    nil,
 			},
 		},
 	}

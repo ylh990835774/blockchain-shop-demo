@@ -57,22 +57,25 @@ func ErrorHandler() gin.HandlerFunc {
 			switch err.Err {
 			case errors.ErrNotFound:
 				statusCode = http.StatusNotFound
-				message = "记录不存在"
+				message = err.Error()
 			case errors.ErrUnauthorized:
 				statusCode = http.StatusUnauthorized
-				message = "未授权的访问"
+				message = err.Error()
 			case errors.ErrForbidden:
 				statusCode = http.StatusForbidden
-				message = "禁止访问"
+				message = err.Error()
 			case errors.ErrBadRequest:
 				statusCode = http.StatusBadRequest
-				message = "请求参数错误"
+				message = err.Error()
 			case errors.ErrInvalidInput:
 				statusCode = http.StatusBadRequest
-				message = "无效的输入"
+				message = err.Error()
 			case errors.ErrDuplicateEntry:
 				statusCode = http.StatusConflict
-				message = "记录已存在"
+				message = err.Error()
+			case errors.ErrNoFieldsToUpdate:
+				statusCode = http.StatusBadRequest
+				message = err.Error()
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "服务器内部错误"
@@ -98,15 +101,5 @@ func ResponseHandler() gin.HandlerFunc {
 		if c.Writer.Written() {
 			return
 		}
-
-		// 获取原始数据
-		if data, exists := c.Get("data"); exists {
-			// 使用标准响应结构
-			c.JSON(http.StatusOK, response.Success(data))
-			return
-		}
-
-		// 如果没有设置数据，直接返回，让原始的处理器处理响应
-		return
 	}
 }

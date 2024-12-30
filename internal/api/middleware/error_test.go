@@ -10,9 +10,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	customerrors "github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 )
 
 func TestErrorHandler(t *testing.T) {
+	// 初始化日志配置
+	err := logger.Setup(&logger.Config{
+		Level:    "info",
+		Format:   "console",
+		Console:  true,
+		Filename: "", // 测试时不写入文件
+	})
+	assert.NoError(t, err)
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -37,6 +47,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "无效的输入",
+				"data":    nil,
 			},
 		},
 		{
@@ -54,6 +65,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "记录不存在",
+				"data":    nil,
 			},
 		},
 		{
@@ -71,6 +83,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "未授权的访问",
+				"data":    nil,
 			},
 		},
 		{
@@ -88,6 +101,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "无效的输入",
+				"data":    nil,
 			},
 		},
 		{
@@ -105,6 +119,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "记录已存在",
+				"data":    nil,
 			},
 		},
 		{
@@ -122,6 +137,7 @@ func TestErrorHandler(t *testing.T) {
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "服务器内部错误",
+				"data":    nil,
 			},
 		},
 		{

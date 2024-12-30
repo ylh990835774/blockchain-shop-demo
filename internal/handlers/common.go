@@ -33,13 +33,15 @@ func handleError(c *gin.Context, err error, operation string) {
 	// 根据错误类型返回不同的响应
 	switch err {
 	case errors.ErrNotFound:
-		c.JSON(http.StatusNotFound, response.Error(-1, "记录不存在"))
+		c.JSON(http.StatusNotFound, response.Error(-1, err.Error()))
 	case errors.ErrUnauthorized:
-		c.JSON(http.StatusUnauthorized, response.Error(-1, "未授权的访问"))
+		c.JSON(http.StatusUnauthorized, response.Error(-1, err.Error()))
 	case errors.ErrInvalidInput:
-		c.JSON(http.StatusBadRequest, response.Error(-1, "无效的输入"))
+		c.JSON(http.StatusBadRequest, response.Error(-1, err.Error()))
 	case errors.ErrDuplicateEntry:
-		c.JSON(http.StatusConflict, response.Error(-1, "记录已存在"))
+		c.JSON(http.StatusConflict, response.Error(-1, err.Error()))
+	case errors.ErrNoFieldsToUpdate:
+		c.JSON(http.StatusBadRequest, response.Error(-1, err.Error()))
 	default:
 		// 对于未知错误，返回500但记录详细日志
 		logger.Error("未处理的错误",
