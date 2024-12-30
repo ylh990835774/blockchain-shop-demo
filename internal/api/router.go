@@ -4,11 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/api/middleware"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/handlers"
-	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 )
 
 // SetupRouter 设置路由
-func SetupRouter(r *gin.Engine, h *handlers.Handlers, log *logger.Logger, jwtMiddleware *middleware.JWTMiddleware) {
+func SetupRouter(r *gin.Engine, h *handlers.Handlers, jwtMiddleware *middleware.JWTMiddleware) {
+	// 添加全局中间件
+	r.Use(middleware.Logger())
+	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.ResponseHandler())
+
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
 	{

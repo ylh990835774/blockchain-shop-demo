@@ -114,10 +114,7 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 		Address string `json:"address" binding:"omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "无效的输入",
-		})
+		handleError(c, errors.ErrInvalidInput, "更新用户资料-参数验证")
 		return
 	}
 
@@ -133,33 +130,14 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 
 	// 如果没有要更新的字段，返回错误
 	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "至少需要更新一个字段",
-		})
+		handleError(c, errors.ErrInvalidInput, "更新用户资料-无更新字段")
 		return
 	}
 
 	if err := h.userService.Update(userID, updates); err != nil {
-		switch err {
-		case errors.ErrNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    -1,
-				"message": "记录不存在",
-			})
-		case errors.ErrInvalidInput:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    -1,
-				"message": "无效的输入",
-			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    -1,
-				"message": "服务器内部错误",
-			})
-		}
+		handleError(c, err, "更新用户资料")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.Success(nil))
+	handleSuccess(c, nil, "更新用户资料")
 }

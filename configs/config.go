@@ -36,9 +36,14 @@ type JWTConfig struct {
 
 // LogConfig 是日志配置
 type LogConfig struct {
-	Level      string `yaml:"level"`
-	Encoding   string `yaml:"encoding"`
-	OutputPath string `yaml:"outputPath"`
+	Level      string `yaml:"level"`      // 日志级别: debug, info, warn, error, fatal
+	Format     string `yaml:"format"`     // 日志格式: json, console
+	Filename   string `yaml:"filename"`   // 日志文件路径
+	MaxSize    int    `yaml:"maxSize"`    // 每个日志文件最大尺寸，单位MB
+	MaxBackups int    `yaml:"maxBackups"` // 保留的旧日志文件最大数量
+	MaxAge     int    `yaml:"maxAge"`     // 保留的旧日志文件最大天数
+	Compress   bool   `yaml:"compress"`   // 是否压缩旧日志文件
+	Console    bool   `yaml:"console"`    // 是否同时输出到控制台
 }
 
 // Load 加载配置文件

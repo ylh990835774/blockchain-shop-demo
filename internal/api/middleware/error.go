@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
@@ -8,11 +9,10 @@ import (
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // ErrorHandler 处理所有的错误响应
-func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
+func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 
@@ -24,11 +24,19 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 		// 获取最后一个错误
 		err := c.Errors.Last()
 
+		// 获取用户信息用于日志
+		userID, exists := c.Get("user_id")
+		userIDStr := "未登录"
+		if exists {
+			userIDStr = fmt.Sprintf("%v", userID)
+		}
+
 		// 记录错误日志
-		log.Error("内部错误",
-			zap.String("path", c.Request.URL.Path),
-			zap.String("method", c.Request.Method),
-			zap.Error(err.Err),
+		logger.Error("API错误",
+			logger.String("path", c.Request.URL.Path),
+			logger.String("method", c.Request.Method),
+			logger.String("user_id", userIDStr),
+			logger.Err(err.Err),
 		)
 
 		// 根据错误类型返回不同的状态码和消息
@@ -72,10 +80,7 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 		}
 
 		// 使用标准响应结构
-		c.JSON(statusCode, gin.H{
-			"code":    -1,
-			"message": message,
-		})
+		c.JSON(statusCode, response.Error(-1, message))
 	}
 }
 

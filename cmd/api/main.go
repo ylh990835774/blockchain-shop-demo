@@ -17,7 +17,6 @@ import (
 	"github.com/ylh990835774/blockchain-shop-demo/internal/repository/mysql"
 	"github.com/ylh990835774/blockchain-shop-demo/internal/service"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -28,16 +27,20 @@ func main() {
 	}
 
 	// 初始化日志
-	logCfg := &logger.Config{
+	logConfig := &logger.Config{
 		Level:      cfg.Log.Level,
-		Encoding:   cfg.Log.Encoding,
-		OutputPath: cfg.Log.OutputPath,
+		Format:     cfg.Log.Format,
+		Filename:   cfg.Log.Filename,
+		MaxSize:    cfg.Log.MaxSize,
+		MaxBackups: cfg.Log.MaxBackups,
+		MaxAge:     cfg.Log.MaxAge,
+		Compress:   cfg.Log.Compress,
+		Console:    cfg.Log.Console,
 	}
-	log, err := logger.NewLogger(logCfg)
-	if err != nil {
+	if err := logger.Setup(logConfig); err != nil {
 		panic(fmt.Sprintf("初始化日志失败: %v", err))
 	}
-	defer log.Sync()
+	defer logger.Sync()
 
 	// 初始化数据库连接
 	db, err := mysql.NewDB(&mysql.Config{
@@ -48,11 +51,11 @@ func main() {
 		Database: cfg.MySQL.Database,
 	})
 	if err != nil {
-		log.Fatal("初始化数据库失败", zap.Error(err))
+		logger.Fatal("初始化数据库失败", logger.Err(err))
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatal("获取数据库连接失败", zap.Error(err))
+		logger.Fatal("获取数据库连接失败", logger.Err(err))
 	}
 	defer sqlDB.Close()
 
@@ -64,8 +67,8 @@ func main() {
 
 	// 添加全局中间件
 	router.Use(gin.Recovery())
-	router.Use(middleware.Logger(log))
-	router.Use(middleware.ErrorHandler(log)) // 错误处理中间件
+	router.Use(middleware.Logger())
+	router.Use(middleware.ErrorHandler())    // 错误处理中间件
 	router.Use(middleware.ResponseHandler()) // 响应处理中间件
 
 	// 初始化存储层
@@ -75,7 +78,8 @@ func main() {
 	blockchainRepo := mysql.NewBlockchainRepository(db)
 
 	// 初始化服务层
-	jwtService := service.NewJWTService(cfg.JWT.SecretKey, cfg.JWT.Issuer, time.Hour*time.Duration(cfg.JWT.ExpireDurationHours))
+	jwtService := service.NewJWTService(cfg.JWT.SecretKey,
+		cfg.JWT.Issuer, time.Hour*time.Duration(cfg.JWT.ExpireDurationHours))
 	userService := service.NewUserService(userRepo, jwtService)
 	productService := service.NewProductService(productRepo)
 	orderService := service.NewOrderService(orderRepo, productRepo, blockchainRepo, db)
@@ -83,8 +87,8 @@ func main() {
 	// 初始化处理器
 	h := handlers.NewHandlers(userService, jwtService, productService, orderService)
 
-	// 设置路由 - 修复这里，传入正确的router实例
-	api.SetupRouter(router, h, log, middleware.NewJWTMiddleware(jwtService))
+	// 设置路由
+	api.SetupRouter(router, h, middleware.NewJWTMiddleware(jwtService))
 
 	// 创建HTTP服务器
 	srv := &http.Server{
@@ -95,7 +99,7 @@ func main() {
 	// 优雅关闭
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("启动服务器失败", zap.Error(err))
+			logger.Fatal("启动服务器失败", logger.Err(err))
 		}
 	}()
 
@@ -103,14 +107,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("正在关闭服务器...")
+	logger.Info("正在关闭服务器...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("服务器关闭失败", zap.Error(err))
+		logger.Fatal("服务器关闭失败", logger.Err(err))
 	}
 
-	log.Info("服务器已关闭")
+	logger.Info("服务器已关闭")
 }
