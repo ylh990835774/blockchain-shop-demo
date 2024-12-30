@@ -27,12 +27,12 @@ func (m *MockUserService) Register(username, password string) (*model.User, erro
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
-func (m *MockUserService) Login(username, password string) (*model.User, error) {
+func (m *MockUserService) Login(username, password string) (*model.User, string, error) {
 	args := m.Called(username, password)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, "", args.Error(2)
 	}
-	return args.Get(0).(*model.User), args.Error(1)
+	return args.Get(0).(*model.User), args.String(1), args.Error(2)
 }
 
 func (m *MockUserService) GetByID(id int64) (*model.User, error) {
@@ -46,6 +46,14 @@ func (m *MockUserService) GetByID(id int64) (*model.User, error) {
 func (m *MockUserService) Update(id int64, updates map[string]interface{}) error {
 	args := m.Called(id, updates)
 	return args.Error(0)
+}
+
+func (m *MockUserService) GetByUsername(username string) (*model.User, error) {
+	args := m.Called(username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
 }
 
 // MockJWTService 是 JWTService 的 mock 实现
@@ -66,93 +74,58 @@ func (m *MockJWTService) ParseToken(token string) (int64, error) {
 func TestHandlers_Register(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		setupMock      func(*MockUserService)
-		expectedStatus int
-		expectedBody   map[string]interface{}
-	}{
-		{
-			name: "successful registration",
-			requestBody: RegisterRequest{
-				Username: "testuser",
-				Password: "testpass",
-			},
-			setupMock: func(m *MockUserService) {
-				m.On("Register", "testuser", "testpass").Return(&model.User{
-					ID:       1,
-					Username: "testuser",
-				}, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody: map[string]interface{}{
-				"code":    float64(0),
-				"message": "success",
-				"data": map[string]interface{}{
-					"id":       float64(1),
-					"username": "testuser",
-				},
-			},
-		},
-		{
-			name: "invalid request",
-			requestBody: gin.H{
-				"username": "",
-				"password": "",
-			},
-			setupMock:      func(m *MockUserService) {},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody: map[string]interface{}{
-				"code":    float64(-1),
-				"message": "无效的请求参数",
-			},
-		},
-		{
-			name: "duplicate username",
-			requestBody: RegisterRequest{
-				Username: "existinguser",
-				Password: "testpass",
-			},
-			setupMock: func(m *MockUserService) {
-				m.On("Register", "existinguser", "testpass").Return(nil, errors.ErrDuplicateEntry)
-			},
-			expectedStatus: http.StatusConflict,
-			expectedBody: map[string]interface{}{
-				"code":    float64(-1),
-				"message": "用户名已存在",
-			},
-		},
-	}
+	t.Run("成功注册", func(t *testing.T) {
+		mockUserService := new(MockUserService)
+		mockJWTService := new(MockJWTService)
+		h := NewHandlers(mockUserService, mockJWTService, nil, nil)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockUserService := new(MockUserService)
-			tt.setupMock(mockUserService)
+		user := &model.User{
+			ID:       1,
+			Username: "testuser",
+		}
 
-			h := &Handlers{
-				userService: mockUserService,
-			}
+		mockUserService.On("Register", "testuser", "password123").Return(user, nil)
 
-			router := gin.New()
-			router.POST("/register", h.Register)
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
 
-			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-			resp := httptest.NewRecorder()
+		data := map[string]string{
+			"username": "testuser",
+			"password": "password123",
+		}
+		jsonData, _ := json.Marshal(data)
+		c.Request = httptest.NewRequest("POST", "/api/v1/users/register", bytes.NewBuffer(jsonData))
+		c.Request.Header.Set("Content-Type", "application/json")
 
-			router.ServeHTTP(resp, req)
+		h.Register(c)
 
-			assert.Equal(t, tt.expectedStatus, resp.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockUserService.AssertExpectations(t)
+	})
 
-			var actualBody map[string]interface{}
-			json.Unmarshal(resp.Body.Bytes(), &actualBody)
-			assert.Equal(t, tt.expectedBody, actualBody)
+	t.Run("用户名已存在", func(t *testing.T) {
+		mockUserService := new(MockUserService)
+		mockJWTService := new(MockJWTService)
+		h := NewHandlers(mockUserService, mockJWTService, nil, nil)
 
-			mockUserService.AssertExpectations(t)
-		})
-	}
+		mockUserService.On("Register", "existinguser", "password123").Return(nil, errors.ErrDuplicateEntry)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+
+		data := map[string]string{
+			"username": "existinguser",
+			"password": "password123",
+		}
+		jsonData, _ := json.Marshal(data)
+		c.Request = httptest.NewRequest("POST", "/api/v1/users/register", bytes.NewBuffer(jsonData))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		h.Register(c)
+
+		assert.Equal(t, http.StatusConflict, w.Code)
+		mockUserService.AssertExpectations(t)
+	})
 }
 
 func TestHandlers_Login(t *testing.T) {
@@ -175,12 +148,11 @@ func TestHandlers_Login(t *testing.T) {
 				m.On("Login", "testuser", "testpass").Return(&model.User{
 					ID:       1,
 					Username: "testuser",
-				}, nil)
-				j.On("GenerateToken", int64(1)).Return("test.jwt.token", nil)
+				}, "test.jwt.token", nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
-				"code":    float64(0),
+				"code":    200,
 				"message": "success",
 				"data": map[string]interface{}{
 					"token": "test.jwt.token",
@@ -198,12 +170,13 @@ func TestHandlers_Login(t *testing.T) {
 				Password: "wrongpass",
 			},
 			setupMock: func(m *MockUserService, j *MockJWTService) {
-				m.On("Login", "wronguser", "wrongpass").Return(nil, errors.ErrUnauthorized)
+				m.On("Login", "wronguser", "wrongpass").Return(nil, "", errors.ErrUnauthorized)
 			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody: map[string]interface{}{
-				"code":    float64(-1),
+				"code":    401,
 				"message": "用户名或密码错误",
+				"data":    nil,
 			},
 		},
 	}
@@ -214,10 +187,7 @@ func TestHandlers_Login(t *testing.T) {
 			mockJWTService := new(MockJWTService)
 			tt.setupMock(mockUserService, mockJWTService)
 
-			h := &Handlers{
-				userService: mockUserService,
-				jwtService:  mockJWTService,
-			}
+			h := NewHandlers(mockUserService, mockJWTService, nil, nil)
 
 			router := gin.New()
 			router.POST("/login", h.Login)

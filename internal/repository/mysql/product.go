@@ -17,12 +17,50 @@ func (r *ProductRepository) Create(product *model.Product) error {
 	return r.db.Create(product).Error
 }
 
-func (r *ProductRepository) Update(product *model.Product) error {
-	return r.db.Save(product).Error
+func (r *ProductRepository) Update(id int64, updates map[string]interface{}) error {
+	result := r.db.Model(&model.Product{}).Where("id = ?", id).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *ProductRepository) UpdateStock(id int64, quantity int) error {
+	result := r.db.Model(&model.Product{}).Where("id = ? AND stock >= ?", id, -quantity).
+		UpdateColumn("stock", gorm.Expr("stock + ?", quantity))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *ProductRepository) UpdateStockWithTx(tx *gorm.DB, id int64, quantity int) error {
+	result := tx.Model(&model.Product{}).Where("id = ? AND stock >= ?", id, -quantity).
+		UpdateColumn("stock", gorm.Expr("stock + ?", quantity))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *ProductRepository) Delete(id int64) error {
-	return r.db.Delete(&model.Product{}, id).Error
+	result := r.db.Delete(&model.Product{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *ProductRepository) GetByID(id int64) (*model.Product, error) {
@@ -47,10 +85,6 @@ func (r *ProductRepository) GetByIDWithTx(tx *gorm.DB, id int64) (*model.Product
 		return nil, err
 	}
 	return &product, nil
-}
-
-func (r *ProductRepository) UpdateWithTx(tx *gorm.DB, product *model.Product) error {
-	return tx.Save(product).Error
 }
 
 func (r *ProductRepository) List(offset, limit int) ([]*model.Product, int64, error) {

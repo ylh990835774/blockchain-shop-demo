@@ -4,10 +4,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
 	"go.uber.org/zap"
 )
 
-func Logger(logger *zap.Logger) gin.HandlerFunc {
+// Logger 日志中间件
+func Logger(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
@@ -16,7 +18,7 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 		c.Next()
 
 		cost := time.Since(start)
-		logger.Info(path,
+		log.Info("请求日志",
 			zap.Int("status", c.Writer.Status()),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),

@@ -9,4 +9,6 @@ var (
 	ErrInvalidToken      = errors.New("无效的令牌")
 	ErrUnauthorized      = errors.New("未授权的访问")
 	ErrInsufficientStock = errors.New("库存不足")
+	ErrForbidden         = errors.New("禁止访问")
+	ErrBadRequest        = errors.New("请求参数错误")
 )

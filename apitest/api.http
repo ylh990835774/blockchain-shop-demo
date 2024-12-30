@@ -55,7 +55,7 @@ Authorization: Bearer {{user_login.response.body.data.token}}
 Content-Type: {{contentTypeJSON}}
 
 {
-  "name": "demo test product",
+  "name": "demo4 test product",
   "description": "This is a new product",
   "price": 9.99,
   "stock": 100
@@ -63,20 +63,20 @@ Content-Type: {{contentTypeJSON}}
 
 ### 更新商品信息
 # @name product_update
-PUT {{host}}/api/v1/products/1
+PUT {{host}}/api/v1/products/4
 Authorization: Bearer {{user_login.response.body.data.token}}
 Content-Type: {{contentTypeJSON}}
 
 {
-  "name": "demo product updated",
+  "name": "demo4 product updated",
   "description": "This product has been updated",
   "price": 19.99,
-  "stock": 9999
+  "stock": 29999
 }
 
 ### 删除商品
 # @name product_delete
-DELETE {{host}}/api/v1/products/1
+DELETE {{host}}/api/v1/products/4
 Authorization: Bearer {{user_login.response.body.data.token}}
 
 ### 创建新订单
@@ -102,5 +102,5 @@ Authorization: Bearer {{user_login.response.body.data.token}}
 
 ### 获取单个订单的区块链交易信息
 # @name order_transaction
-GET {{host}}/api/v1/orders/1/transaction
+GET {{host}}/api/v1/orders/5/transaction
 Authorization: Bearer {{user_login.response.body.data.token}}

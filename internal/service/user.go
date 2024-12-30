@@ -9,28 +9,65 @@ import (
 
 // UserService 实现了IUserService接口
 type userService struct {
-	repo repository.UserRepository
+	repo       repository.UserRepository
+	jwtService IJWTService
 }
 
 // 确保userService实现了IUserService接口
 var _ IUserService = (*userService)(nil)
 
-func NewUserService(repo repository.UserRepository) IUserService {
+func NewUserService(repo repository.UserRepository, jwtService IJWTService) IUserService {
 	return &userService{
-		repo: repo,
+		repo:       repo,
+		jwtService: jwtService,
 	}
 }
 
-func (s *userService) Create(user *model.User) error {
-	if user == nil {
-		return errors.ErrInvalidInput
+func (s *userService) Register(username, password string) (*model.User, error) {
+	// 检查用户名是否已存在
+	if s.ExistsByUsername(username) {
+		return nil, errors.ErrDuplicateEntry
 	}
 
-	if s.ExistsByUsername(user.Username) {
-		return errors.ErrDuplicateEntry
+	// 创建新用户
+	user := &model.User{
+		Username: username,
 	}
 
-	return s.repo.Create(user)
+	// 设置加密密码
+	if err := user.SetPassword(password); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Create(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *userService) Login(username, password string) (*model.User, string, error) {
+	// 根据用户名获取用户
+	user, err := s.repo.GetByUsername(username)
+	if err != nil {
+		if err == mysql.ErrNotFound {
+			return nil, "", errors.ErrNotFound
+		}
+		return nil, "", err
+	}
+
+	// 验证密码
+	if !user.CheckPassword(password) {
+		return nil, "", errors.ErrUnauthorized
+	}
+
+	// 生成JWT令牌
+	token, err := s.jwtService.GenerateToken(user.ID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return user, token, nil
 }
 
 func (s *userService) GetByID(id int64) (*model.User, error) {
@@ -49,75 +86,22 @@ func (s *userService) GetByID(id int64) (*model.User, error) {
 	return user, nil
 }
 
-func (s *userService) Authenticate(username, password string) (*model.User, error) {
-	user, err := s.GetByUsername(username)
-	if err != nil {
-		return nil, err
-	}
-
-	if !user.CheckPassword(password) {
-		return nil, errors.ErrUnauthorized
-	}
-
-	return user, nil
-}
-
-func (s *userService) ExistsByUsername(username string) bool {
-	return s.repo.ExistsByUsername(username)
-}
-
 func (s *userService) Update(id int64, updates map[string]interface{}) error {
 	if id <= 0 {
 		return errors.ErrInvalidInput
 	}
 
-	if _, err := s.GetByID(id); err != nil {
-		if err == errors.ErrNotFound {
+	if err := s.repo.Update(id, updates); err != nil {
+		if err == mysql.ErrNotFound {
 			return errors.ErrNotFound
 		}
 		return err
 	}
 
-	return s.repo.Update(id, updates)
-}
-
-func (s *userService) Register(username, password string) (*model.User, error) {
-	// 检查用户是否已存在
-	if s.ExistsByUsername(username) {
-		return nil, errors.ErrDuplicateEntry
-	}
-
-	// 创建用户
-	user := &model.User{
-		Username: username,
-	}
-	user.SetPassword(password)
-
-	if err := s.Create(user); err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
-func (s *userService) Login(username, password string) (*model.User, error) {
-	user, err := s.GetByUsername(username)
-	if err != nil {
-		return nil, err
-	}
-
-	if !user.CheckPassword(password) {
-		return nil, errors.ErrUnauthorized
-	}
-
-	return user, nil
+	return nil
 }
 
 func (s *userService) GetByUsername(username string) (*model.User, error) {
-	if username == "" {
-		return nil, errors.ErrInvalidInput
-	}
-
 	user, err := s.repo.GetByUsername(username)
 	if err != nil {
 		if err == mysql.ErrNotFound {
@@ -125,6 +109,10 @@ func (s *userService) GetByUsername(username string) (*model.User, error) {
 		}
 		return nil, err
 	}
-
 	return user, nil
+}
+
+func (s *userService) ExistsByUsername(username string) bool {
+	_, err := s.repo.GetByUsername(username)
+	return err == nil
 }

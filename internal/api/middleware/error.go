@@ -5,6 +5,7 @@ import (
 
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/errors"
 	"github.com/ylh990835774/blockchain-shop-demo/pkg/logger"
+	"github.com/ylh990835774/blockchain-shop-demo/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -48,25 +49,50 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 			switch err.Err {
 			case errors.ErrNotFound:
 				statusCode = http.StatusNotFound
-				message = "记录不存在"
+				message = "资源未找到"
 			case errors.ErrUnauthorized:
 				statusCode = http.StatusUnauthorized
-				message = "未授权的访问"
-			case errors.ErrInvalidInput:
+				message = "未授权访问"
+			case errors.ErrForbidden:
+				statusCode = http.StatusForbidden
+				message = "禁止访问"
+			case errors.ErrBadRequest:
 				statusCode = http.StatusBadRequest
-				message = "无效的输入"
-			case errors.ErrDuplicateEntry:
-				statusCode = http.StatusConflict
-				message = "记录已存在"
+				message = "请求参数错误"
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "服务器内部错误"
 			}
 		}
 
-		c.JSON(statusCode, gin.H{
-			"code":    -1,
-			"message": message,
-		})
+		// 使用标准响应结构
+		c.JSON(statusCode, response.Error(statusCode, message))
+	}
+}
+
+// ResponseHandler 处理成功响应的中间件
+func ResponseHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		// 如果已经有错误处理了，就不需要处理成功响应
+		if len(c.Errors) > 0 {
+			return
+		}
+
+		// 如果响应已经被写入，就不需要处理
+		if c.Writer.Written() {
+			return
+		}
+
+		// 获取原始数据
+		if data, exists := c.Get("data"); exists {
+			// 使用标准响应结构
+			c.JSON(http.StatusOK, response.Success(data))
+			return
+		}
+
+		// 如果没有设置数据，直接返回，让原始的处理器处理响应
+		return
 	}
 }

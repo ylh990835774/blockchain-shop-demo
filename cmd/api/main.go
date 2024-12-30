@@ -48,7 +48,7 @@ func main() {
 		Database: cfg.MySQL.Database,
 	})
 	if err != nil {
-		log.Fatal("连接数据库失败", zap.Error(err))
+		log.Fatal("初始化数据库失败", zap.Error(err))
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -56,26 +56,37 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	// 初始化仓库
+	// 设置 Gin 模式
+	gin.SetMode(cfg.Server.Mode)
+
+	// 初始化 Gin 引擎
+	router := gin.New()
+
+	// 添加全局中间件
+	router.Use(gin.Recovery())
+	router.Use(middleware.Logger(log))
+	router.Use(middleware.ErrorHandler(log)) // 错误处理中间件
+	router.Use(middleware.ResponseHandler()) // 响应处理中间件
+
+	// 初始化存储层
 	userRepo := mysql.NewUserRepository(db)
 	productRepo := mysql.NewProductRepository(db)
 	orderRepo := mysql.NewOrderRepository(db)
 	blockchainRepo := mysql.NewBlockchainRepository(db)
 
-	// 初始化服务
+	// 初始化服务层
 	jwtService := service.NewJWTService(cfg.JWT.SecretKey, cfg.JWT.Issuer, time.Hour*time.Duration(cfg.JWT.ExpireDurationHours))
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, jwtService)
 	productService := service.NewProductService(productRepo)
 	orderService := service.NewOrderService(orderRepo, productRepo, blockchainRepo, db)
 
 	// 初始化处理器
 	h := handlers.NewHandlers(userService, jwtService, productService, orderService)
 
-	// 初始化路由
-	gin.SetMode(cfg.Server.Mode)
-	router := api.SetupRouter(h, log, middleware.NewJWTMiddleware(jwtService))
+	// 设置路由 - 修复这里，传入正确的router实例
+	api.SetupRouter(router, h, log, middleware.NewJWTMiddleware(jwtService))
 
-	// 启动服务器
+	// 创建HTTP服务器
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler: router,

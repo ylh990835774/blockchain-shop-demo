@@ -8,13 +8,7 @@ import (
 )
 
 // SetupRouter 设置路由
-func SetupRouter(h *handlers.Handlers, log *logger.Logger, jwtMiddleware *middleware.JWTMiddleware) *gin.Engine {
-	r := gin.New()
-
-	// 使用中间件
-	r.Use(gin.Recovery())
-	r.Use(middleware.ErrorHandler(log))
-
+func SetupRouter(r *gin.Engine, h *handlers.Handlers, log *logger.Logger, jwtMiddleware *middleware.JWTMiddleware) {
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
 	{
@@ -58,6 +52,4 @@ func SetupRouter(h *handlers.Handlers, log *logger.Logger, jwtMiddleware *middle
 			}
 		}
 	}
-
-	return r
 }
