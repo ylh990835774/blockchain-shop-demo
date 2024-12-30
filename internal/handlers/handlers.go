@@ -145,7 +145,7 @@ func (h *Handlers) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetInt64("userID")
+	userID := c.GetInt64("user_id")
 
 	// 获取商品信息
 	product, err := h.productService.GetByID(req.ProductID)
@@ -183,7 +183,7 @@ func (h *Handlers) CreateOrder(c *gin.Context) {
 
 // ListOrders 获取订单列表
 func (h *Handlers) ListOrders(c *gin.Context) {
-	userID := c.GetInt64("userID")
+	userID := c.GetInt64("user_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
@@ -201,7 +201,7 @@ func (h *Handlers) ListOrders(c *gin.Context) {
 
 // GetOrder 获取订单详情
 func (h *Handlers) GetOrder(c *gin.Context) {
-	userID := c.GetInt64("userID")
+	userID := c.GetInt64("user_id")
 	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的订单ID"))
@@ -230,7 +230,7 @@ func (h *Handlers) GetOrder(c *gin.Context) {
 
 // GetOrderTransaction 获取订单的区块链交易信息
 func (h *Handlers) GetOrderTransaction(c *gin.Context) {
-	userID := c.GetInt64("userID")
+	userID := c.GetInt64("user_id")
 	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, response.Error(http.StatusBadRequest, "无效的订单ID"))

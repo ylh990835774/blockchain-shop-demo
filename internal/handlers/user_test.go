@@ -312,14 +312,18 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 		expectedBody   map[string]interface{}
 	}{
 		{
-			name: "successful_update",
+			name: "successful_update_both_fields",
 			setupMock: func(m *MockUserService) {
-				m.On("Update", int64(1), mock.Anything).Return(nil)
+				expectedUpdates := map[string]interface{}{
+					"phone":   "13800138000",
+					"address": "北京市朝阳区",
+				}
+				m.On("Update", int64(1), expectedUpdates).Return(nil)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"username": "newusername",
-				"password": "newpassword",
+				"phone":   "13800138000",
+				"address": "北京市朝阳区",
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
@@ -329,18 +333,83 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid_request",
+			name: "successful_update_phone_only",
 			setupMock: func(m *MockUserService) {
-				m.On("Update", int64(1), mock.Anything).Return(customerrors.ErrInvalidInput)
+				expectedUpdates := map[string]interface{}{
+					"phone": "13800138000",
+				}
+				m.On("Update", int64(1), expectedUpdates).Return(nil)
 			},
 			userID: 1,
 			requestBody: map[string]interface{}{
-				"username": "",
+				"phone": "13800138000",
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: map[string]interface{}{
+				"code":    float64(200),
+				"message": "success",
+				"data":    nil,
+			},
+		},
+		{
+			name: "successful_update_address_only",
+			setupMock: func(m *MockUserService) {
+				expectedUpdates := map[string]interface{}{
+					"address": "北京市朝阳区",
+				}
+				m.On("Update", int64(1), expectedUpdates).Return(nil)
+			},
+			userID: 1,
+			requestBody: map[string]interface{}{
+				"address": "北京市朝阳区",
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody: map[string]interface{}{
+				"code":    float64(200),
+				"message": "success",
+				"data":    nil,
+			},
+		},
+		{
+			name:           "invalid_no_fields_provided",
+			setupMock:      func(m *MockUserService) {},
+			userID:         1,
+			requestBody:    map[string]interface{}{},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody: map[string]interface{}{
+				"code":    float64(-1),
+				"message": "至少需要更新一个字段",
+			},
+		},
+		{
+			name:      "invalid_phone_length",
+			setupMock: func(m *MockUserService) {},
+			userID:    1,
+			requestBody: map[string]interface{}{
+				"phone": "138001380", // 少于11位
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody: map[string]interface{}{
 				"code":    float64(-1),
 				"message": "无效的输入",
+			},
+		},
+		{
+			name: "user_not_found",
+			setupMock: func(m *MockUserService) {
+				expectedUpdates := map[string]interface{}{
+					"phone": "13800138000",
+				}
+				m.On("Update", int64(1), expectedUpdates).Return(customerrors.ErrNotFound)
+			},
+			userID: 1,
+			requestBody: map[string]interface{}{
+				"phone": "13800138000",
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody: map[string]interface{}{
+				"code":    float64(-1),
+				"message": "记录不存在",
 			},
 		},
 	}
@@ -358,10 +427,10 @@ func TestHandlers_UpdateProfile(t *testing.T) {
 
 			handlers := NewHandlers(mockUserService, mockJWTService, mockProductService, mockOrderService)
 			router := gin.New()
-			router.PUT("/profile", func(c *gin.Context) {
+			router.Use(func(c *gin.Context) {
 				c.Set("user_id", tt.userID)
-				handlers.UpdateProfile(c)
 			})
+			router.PUT("/profile", handlers.UpdateProfile)
 
 			requestJSON, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest(http.MethodPut, "/profile", bytes.NewBuffer(requestJSON))

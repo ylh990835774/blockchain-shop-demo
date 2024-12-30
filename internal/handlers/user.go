@@ -110,8 +110,8 @@ func (h *Handlers) GetProfile(c *gin.Context) {
 
 func (h *Handlers) UpdateProfile(c *gin.Context) {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Phone   string `json:"phone" binding:"omitempty,len=11"`
+		Address string `json:"address" binding:"omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -122,9 +122,22 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 	}
 
 	userID := c.GetInt64("user_id")
-	updates := map[string]interface{}{
-		"username": req.Username,
-		"password": req.Password,
+	updates := make(map[string]interface{})
+
+	if req.Phone != "" {
+		updates["phone"] = req.Phone
+	}
+	if req.Address != "" {
+		updates["address"] = req.Address
+	}
+
+	// 如果没有要更新的字段，返回错误
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    -1,
+			"message": "至少需要更新一个字段",
+		})
+		return
 	}
 
 	if err := h.userService.Update(userID, updates); err != nil {
