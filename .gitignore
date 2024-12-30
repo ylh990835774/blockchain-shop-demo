@@ -1,6 +1,7 @@
 .vscode
 .idea
 
+apitest/logs
 storage
 configs/config.yaml
 coverage.out
