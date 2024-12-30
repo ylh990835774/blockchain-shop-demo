@@ -60,6 +60,20 @@ func (s *OrderService) Create(userID, productID int64, quantity int) (*model.Ord
 		return nil, err
 	}
 
+	// 生成区块链交易
+	transaction, err := s.blockchainRepo.CreateTransaction(order.ID, order.TotalPrice)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 更新订单的交易哈希
+	order.TxHash = transaction.TxHash
+	if err := s.repo.UpdateWithTx(tx, order); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	// 更新商品库存
 	product.Stock -= quantity
 	if err := s.productRepo.UpdateWithTx(tx, product); err != nil {
